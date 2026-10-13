@@ -1,5 +1,8 @@
-## 1.2.3
+## 1.3.0
 
+- **Settings in the Auction House**: a new **AH Forever** tab after the other tabs (Auctionator's too) shows the settings right inside the Auction House. `/ahf` opens it while the Auction House is open; otherwise the settings open in their own window, as before.
+- **Sort by our columns**: click the **iLvl**, **Req Lvl**, **Vendor** or **Type** header to sort the search results; click again to reverse. Clicking one of Blizzard's headers goes back to the game's sort.
+- "Req" is now **Req Lvl**.
 - Fixed: the category buttons' artwork now stretches to the full width of a wider category list.
 - Row and category text sizes are now percentages of the game's own size (Default, 110% to 200%), so Default really is the game's size. Your 1.2 text sizes go back to Default.
 

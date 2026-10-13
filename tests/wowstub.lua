@@ -61,6 +61,8 @@ function Methods:GetRegions() local r = {} for _, c in ipairs(self.__children) d
 function Methods:GetObjectType() return self.__kind end
 function Methods:GetName() return self.__name end
 function Methods:GetParent() return self.__parent end
+function Methods:SetParent(p) self.__parent = p end
+function Methods:GetChildren() local r = {} for _, c in ipairs(self.__children) do if c.__kind ~= "Texture" and c.__kind ~= "FontString" then r[#r + 1] = c end end return unpack(r) end
 function Methods:SetFontString(fs) self.__fs = fs end
 function Methods:SetupMenu(fn) self.__menuGen = fn end
 function Methods:GetFontString() return self.__fs end
@@ -132,6 +134,12 @@ function hooksecurefunc(a, b, c)
         return unpack(r)
     end
 end
+SELECTED_TABS = {}
+function PanelTemplates_SelectTab(t) SELECTED_TABS[t] = true end
+function PanelTemplates_DeselectTab(t) SELECTED_TABS[t] = nil end
+function PanelTemplates_UpdateTabs(f) end
+function PanelTemplates_SetTab(f, i) f.selectedTab = i end
+function PanelTemplates_TabResize() end
 function geterrorhandler() return function(err) error(err, 0) end end
 
 FAKE_TIME = 100
@@ -201,6 +209,8 @@ function Column:ConstructHeader(kind, template, owner, text, sortOrder)
     self.header = newObj("Button", nil, self.table.headerContainer, template)
     self.header.__text = text
     self.header.__h = 19
+    self.header.Arrow = newObj("Texture", nil, self.header)
+    self.header.Arrow.__shown = false
     self.headerOwner = owner
 end
 function Column:ConstructCells(kind, template, ...) self.cellTemplate, self.cellArgs = template, { ... } end
@@ -231,6 +241,8 @@ function Builder:AddTestColumn(header, width, fill, padding)
         c.header = newObj("Button", nil, self.headerContainer)
         c.header.__text = header
         c.header.__h = 19
+        c.header.Arrow = newObj("Texture", nil, c.header)
+        c.header.Arrow.__shown = false
     end
     if fill then c:SetFillConstraints(fill, padding) else c:SetFixedConstraints(width, padding) end
     table.insert(self.columns, c)
@@ -374,10 +386,24 @@ function FakeAuctionHouse()
     box.__callbacks = {}
     function box:RegisterCallback(event, fn, owner) self.__callbacks[event] = fn end
     f.CategoriesList.ScrollBox = box
+    f.Tabs = {}
+    for i, name in ipairs({ "Buy", "Sell", "Auctions", "Auctionator" }) do
+        local t = newObj("Button", nil, f)
+        t.__text = name
+        t.__right = 100 * i
+        function t:GetRight() return self.__right end
+        f.Tabs[i] = t
+    end
     f.SearchBar = newObj("Frame", nil, f)
     f.SearchBar.FavoritesSearchButton = newObj("Button", nil, f.SearchBar)
     f.BrowseResultsFrame = newObj("Frame", nil, f)
     f.BrowseResultsFrame.ItemList = NewItemList(f.BrowseResultsFrame, BrowseLayout)
+    f.BrowseResultsFrame.browseResults = {}
+    -- Like Blizzard's: a new search replaces the results, more results add to them
+    function f.BrowseResultsFrame:UpdateBrowseResults(added)
+        if added then for _, r in ipairs(added) do table.insert(self.browseResults, r) end end
+    end
+    function f.BrowseResultsFrame:SetSortOrder(order) self.sortOrder = order end
     f.ItemBuyFrame = newObj("Frame", nil, f)
     f.ItemBuyFrame.ItemList = NewItemList(f.ItemBuyFrame, function(tb)
         tb:AddTestColumn("Bid", 140, nil, 0)

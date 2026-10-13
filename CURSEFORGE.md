@@ -16,10 +16,10 @@ It works alongside Auctionator and other Auction House addons: their tabs, colum
 - **Scale** the whole window from 60% to 150%.
 - **Column widths.** Drag the line between two column headers to resize a column. Double-click the line for the column's default width. Works on every list (Buy, Sell, Auctions) and on columns added by other addons, like a Median price column. Saved for each character.
 - **Hide, show and reorder columns** with the **Columns** button beside the search box (or the Show & Order tab). Columns from other addons too.
-- **Extra columns**: **iLvl**, **Req**, **Type** and **Vendor** (green when you could sell it to a vendor for more than the lowest buyout) on the search results; **Per unit** and **Seller** on an item's auctions.
+- **Extra columns**: **iLvl**, **Req Lvl**, **Type** and **Vendor** (click their headers to sort) (green when you could sell it to a vendor for more than the lowest buyout) on the search results; **Per unit** and **Seller** on an item's auctions.
 - **Row text size** for every list; rows grow with bigger text.
 - **Category list width and text size.** Make the list of categories on the left wider, and its text bigger.
-- **Settings window** with hover help on every option, and a Reset to default button.
+- **Settings in their own tab** (**AH Forever**) at the bottom of the Auction House, with hover help on every option and a Reset to default button.
 
 ## Installation
 
@@ -33,9 +33,9 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 - **Move**: drag the title bar at the top. Lock it with `/ahf lock` or in the settings.
 - **Resize a column**: point at the line between two column headers (it turns gold) and drag. Double-click the line to put that column back to its default width.
 - **Hide, show or reorder columns**: click **Columns** beside the search box: tick a column on or off, or hover it for Move left / Move right. Or use the settings → **Show & Order** tab. The Name column always shows.
-- **Open the settings**: type `/ahf`, or go to **Options → AddOns → AuctionHouse Forever**.
+- **Open the settings**: click the **AH Forever** tab at the bottom of the Auction House, type `/ahf`, or go to **Options → AddOns → AuctionHouse Forever**.
 
-### Settings window
+### Settings (AH Forever tab)
 
 | Tab | What's there |
 |---|---|

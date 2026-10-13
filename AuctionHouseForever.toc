@@ -18,4 +18,5 @@ Extra.lua
 Cells.xml
 News.lua
 Options.lua
+Tab.lua
 Splash.lua

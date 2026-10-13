@@ -365,7 +365,7 @@ function IsEquippableItem(id) local i = ITEMS[id] return i and i.loc ~= "" end
 function GetMoneyString(c) return ("%dg%ds%dc"):format(math.floor(c / 10000), math.floor(c / 100) % 100, c % 100) end
 list:SetTableBuilderLayout(BrowseLayout)
 tb = list.tableBuilder
-assertEq(tb:Names(), "Price,Name,iLvl,Req,Vendor,Available,*", "iLvl, Req, Vendor after Name; Type starts hidden")
+assertEq(tb:Names(), "Price,Name,iLvl,Req Lvl,Vendor,Available,*", "iLvl, Req, Vendor after Name; Type starts hidden")
 assertEq(tb:Column("iLvl").cellTemplate, "AuctionHouseForeverCellTemplate", "our cell template")
 assertEq(tb:Column("iLvl").cellArgs[1], "ilvl", "cells told their kind")
 assertEq(tb:Column("Vendor"):GetFixedWidth(), 100, "Vendor width")
@@ -374,14 +374,14 @@ local typeRow
 for _, c in ipairs(lc) do if c.name == "Type" then typeRow = c end end
 assertEq(typeRow.shown, false, "Type listed, hidden")
 AHF:SetColumnShown("browse", "Type", true)
-assertEq(tb:Names(), "Price,Name,iLvl,Req,Type,Vendor,Available,*", "Type shown")
+assertEq(tb:Names(), "Price,Name,iLvl,Req Lvl,Type,Vendor,Available,*", "Type shown")
 AHF:SetColumnShown("browse", "iLvl", false)
-assertEq(tb:Names(), "Price,Name,Req,Type,Vendor,Available,*", "iLvl hidden")
+assertEq(tb:Names(), "Price,Name,Req Lvl,Type,Vendor,Available,*", "iLvl hidden")
 list:SetTableBuilderLayout(BrowseLayout)
 tb = list.tableBuilder
-assertEq(tb:Names(), "Price,Name,Req,Type,Vendor,Available,*", "kept after a new layout, added once")
+assertEq(tb:Names(), "Price,Name,Req Lvl,Type,Vendor,Available,*", "kept after a new layout, added once")
 AHF:ResetColumnLayout("browse")
-assertEq(tb:Names(), "Price,Name,iLvl,Req,Vendor,Available,*", "defaults back")
+assertEq(tb:Names(), "Price,Name,iLvl,Req Lvl,Vendor,Available,*", "defaults back")
 -- What the cells show
 local helm = { itemKey = { itemID = 100, itemLevel = 25 }, minPrice = 5000 }
 local herb = { itemKey = { itemID = 200, itemLevel = 5 }, minPrice = 20 }
@@ -414,7 +414,7 @@ assertEq(AHF:CellText("req", helm), "", "blank while loading")
 local cell = { rowData = helm, Text = CreateFrame("Frame"):CreateFontString() }
 for k, v in pairs(AuctionHouseForeverCellMixin) do cell[k] = v end
 cell:Init("req")
-tb:Column("Req").cells = { [{}] = cell }
+tb:Column("Req Lvl").cells = { [{}] = cell }
 ITEMS[100].uncached = nil
 fire("GET_ITEM_INFO_RECEIVED", 100)
 RunTimers()
@@ -422,6 +422,32 @@ assertEq(cell.Text:GetText(), "20", "filled in when the item arrives")
 -- Item auctions: Per unit and Seller after Buyout
 buy:SetTableBuilderLayout(buy.tableBuilderLayoutFunction)
 assertEq(buy.tableBuilder:Names(), "Bid,Buyout,Per unit,Seller,*", "item auction columns")
+-- Sorting the search results by our columns
+local brf = f.BrowseResultsFrame
+local mace = { itemKey = { itemID = 400, itemLevel = 12 }, minPrice = 300 }
+ITEMS[400] = { name = "Mace", ilvl = 12, req = 7, sell = 50, type = "Weapon", sub = "One-Handed Maces", loc = "INVTYPE_WEAPON", class = 2, subclass = 4 }
+local function names() local t = {} for _, r in ipairs(brf.browseResults) do t[#t + 1] = ITEMS[r.itemKey.itemID].name end return table.concat(t, ",") end
+brf:UpdateBrowseResults({ helm, herb, ring, mace })
+assertEq(names(), "Cowl,Peacebloom,Ring,Mace", "the game's order")
+local sortButtons = AHF.columnEntries[1].sortButtons
+local ilvlButton
+for _, b in ipairs(sortButtons) do if b.__shown and b.kind == "ilvl" then ilvlButton = b end end
+assert(ilvlButton, "iLvl header clickable")
+ilvlButton.__scripts.OnClick(ilvlButton)
+assertEq(names(), "Peacebloom,Mace,Cowl,Ring", "by iLvl, lowest first (no iLvl first)")
+assertEq(ilvlButton.header.Arrow.__shown, true, "arrow on iLvl")
+assertEq(tb:Column("Price").header.Arrow.__shown, false, "no arrow on Price")
+ilvlButton.__scripts.OnClick(ilvlButton)
+assertEq(names(), "Ring,Cowl,Mace,Peacebloom", "click again: highest first")
+brf:UpdateBrowseResults({ { itemKey = { itemID = 300, itemLevel = 40 }, minPrice = 1 } })
+assertEq(names(), "Ring,Ring,Cowl,Mace,Peacebloom", "more results sorted in")
+local reqButton
+for _, b in ipairs(sortButtons) do if b.__shown and b.kind == "req" then reqButton = b end end
+reqButton.__scripts.OnClick(reqButton)
+assertEq(names(), "Peacebloom,Mace,Cowl,Ring,Ring", "by Req Lvl")
+brf:SetSortOrder(1)   -- a Blizzard header
+assertEq(AHF.browseSort, nil, "Blizzard's sort takes over")
+assertEq(reqButton.header.Arrow.__shown, false, "our arrow off")
 -- The Columns button: a menu for the list on screen
 local cb = AHF.columnsButton
 assert(cb and cb.__template == "WowStyle1FilterDropdownTemplate", "Columns button in the Filter button's style")
@@ -453,14 +479,14 @@ local typeCheck
 for _, c in ipairs(checks) do if c.text == "Type" then typeCheck = c end end
 assertEq(typeCheck.a(), false, "Type unticked")
 typeCheck.b()
-assertEq(tb:Names(), "Price,Name,iLvl,Req,Type,Vendor,Available,*", "ticking Type shows it")
+assertEq(tb:Names(), "Price,Name,iLvl,Req Lvl,Type,Vendor,Available,*", "ticking Type shows it")
 assertEq(#checks[1].sub, 1, "first column: Move right only")
 checks[1].sub[1].fn()
-assertEq(tb:Names(), "Name,Price,iLvl,Req,Type,Vendor,Available,*", "Move right")
+assertEq(tb:Names(), "Name,Price,iLvl,Req Lvl,Type,Vendor,Available,*", "Move right")
 local last = items[#items]
 assertEq(last.text, "More settings (/ahf)", "link to the settings")
 items[#items - 1].a()
-assertEq(tb:Names(), "Price,Name,iLvl,Req,Vendor,Available,*", "Show all, default order")
+assertEq(tb:Names(), "Price,Name,iLvl,Req Lvl,Vendor,Available,*", "Show all, default order")
 f.ItemBuyFrame.__shown = true
 f.BrowseResultsFrame.__shown = false
 assertEq(OpenMenu()[1].text, "Buy: item auctions", "menu follows the list on screen")
@@ -613,6 +639,36 @@ RunTimers()
 assertEq(resetAll:GetFontString():GetText(), "Reset to default", "confirmation expires")
 AHF:ToggleConfig()
 assertEq(win:IsShown(), false, "toggles closed")
+
+step("settings in the Auction House's own tab")
+local tabB = AHF.tab
+assert(tabB, "AH Forever tab")
+assertEq(tabB:GetText(), "AH Forever", "tab name")
+assertEq(select(2, tabB:GetPoint(1)), f.Tabs[4], "after the last tab (Auctionator's)")
+tabB.__scripts.OnClick(tabB)
+assert(AHF.tabPanel:IsShown(), "tab shows its panel")
+assertEq(win:GetParent(), AHF.tabPanel, "settings inside the Auction House")
+assertEq(AHF.embedded, true, "embedded")
+assertEq(SELECTED_TABS[tabB], true, "our tab selected")
+for _, b in ipairs(win.closeButtons) do assertEq(b.__shown, false, "no X / Close inside the Auction House") end
+f.Tabs[1].__scripts.OnClick(f.Tabs[1])   -- Buy tab
+assertEq(AHF.tabPanel:IsShown(), false, "another tab closes ours")
+assertEq(win:GetParent(), UIParent, "window on its own again")
+assertEq(win:IsShown(), false, "and hidden")
+SlashCmdList.AUCTIONHOUSEFOREVER("")
+assertEq(AHF.embedded, true, "/ahf opens the tab while the Auction House is open")
+SlashCmdList.AUCTIONHOUSEFOREVER("")
+assertEq(AHF.tabPanel:IsShown(), false, "/ahf again closes it")
+SlashCmdList.AUCTIONHOUSEFOREVER("")
+win:Hide()   -- Escape
+assertEq(AHF.tabPanel:IsShown(), false, "Escape closes the tab")
+f:SetDisplayMode("Sell")
+f:Hide()
+SlashCmdList.AUCTIONHOUSEFOREVER("")
+assertEq(AHF.embedded, false, "with the Auction House closed: a window of its own")
+assert(win:IsShown(), "window shown")
+win:Hide()
+f:Open()
 
 step("Interface Options button")
 local panel = AHF.settingsPanel

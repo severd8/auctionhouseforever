@@ -14,7 +14,7 @@ local AHF = ns.AHF
 AHF.EXTRA_COLUMNS = {
     browse = {
         { name = "iLvl",   kind = "ilvl",   width = 40, after = "fill" },
-        { name = "Req",    kind = "req",    width = 36 },
+        { name = "Req Lvl", kind = "req",   width = 52 },
         { name = "Type",   kind = "type",   width = 120, hidden = true },
         { name = "Vendor", kind = "vendor", width = 100 },
     },
@@ -215,8 +215,148 @@ function AHF:AddExtraColumns(entry, tb)
     end
 end
 
+---------------------------------------------------------------------------
+-- Sorting the search results by our columns. The game sorts only by its own
+-- columns (on the server); for ours, the results already loaded are sorted
+-- here, again as more arrive. Clicking one of Blizzard's headers goes back to
+-- the game's sort.
+---------------------------------------------------------------------------
+local SORT_VALUE = {}
+function SORT_VALUE.ilvl(row)
+    local id, key = KeyID(row)
+    if not id or not Equippable(id, ItemInstant(id)) then return -1 end
+    local lvl = key.itemLevel
+    if type(lvl) ~= "number" or lvl <= 0 then
+        local info = ItemInfo(id)
+        lvl = info and info.ilvl
+    end
+    return type(lvl) == "number" and lvl or -1
+end
+function SORT_VALUE.req(row)
+    local info = ItemInfo((KeyID(row)))
+    return info and type(info.req) == "number" and info.req or -1
+end
+function SORT_VALUE.vendor(row)
+    local info = ItemInfo((KeyID(row)))
+    return info and type(info.sell) == "number" and info.sell or -1
+end
+SORT_VALUE.type = function(row) return (AHF:CellText("type", row)) or "" end
+
+function AHF:SortBrowseResults()
+    local brf = self.frame and self.frame.BrowseResultsFrame
+    local sort = self.browseSort
+    local results = brf and brf.browseResults
+    if not sort or type(results) ~= "table" or #results < 2 then return end
+    local fn = SORT_VALUE[sort.kind]
+    local keyed = {}
+    for i, row in ipairs(results) do
+        local ok, v = pcall(fn, row)
+        keyed[i] = { row = row, v = ok and v or -1, price = type(row) == "table" and row.minPrice or 0, i = i }
+    end
+    table.sort(keyed, function(a, b)
+        if a.v ~= b.v then
+            if type(a.v) ~= type(b.v) then return type(a.v) == "number" end
+            if sort.reverse then return a.v > b.v end
+            return a.v < b.v
+        end
+        if a.price ~= b.price then return (a.price or 0) < (b.price or 0) end
+        return a.i < b.i
+    end)
+    for i, k in ipairs(keyed) do results[i] = k.row end
+    if brf.ItemList and brf.ItemList.DirtyScrollFrame then brf.ItemList:DirtyScrollFrame() end
+end
+
+-- The arrow on the sorted header: ours, or none of ours (Blizzard's own then)
+function AHF:UpdateSortArrows()
+    local entry
+    for _, e in ipairs(self.columnEntries or {}) do if e.key == "browse" then entry = e end end
+    if not entry then return end
+    local sort = self.browseSort
+    for _, b in ipairs(entry.sortButtons or {}) do
+        local arrow = b:IsShown() and b.header and type(b.header.Arrow) == "table" and b.header.Arrow
+        if arrow then
+            local on = sort and sort.kind == b.kind
+            arrow:SetShown(on and true or false)
+            if on then
+                if sort.reverse then arrow:SetTexCoord(0, 1, 0, 1) else arrow:SetTexCoord(0, 1, 1, 0) end
+            end
+        end
+    end
+    -- While ours sorts, Blizzard's headers don't show an arrow
+    local tb = entry.list.tableBuilder
+    if sort and tb then
+        for _, col in ipairs(tb:GetColumns()) do
+            local h = not ours[col] and col.GetHeaderFrame and col:GetHeaderFrame()
+            if h and type(h.Arrow) == "table" then h.Arrow:Hide() end
+        end
+    end
+end
+
+local function MakeSortButton(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetFrameLevel((parent:GetFrameLevel() or 0) + 5)
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.08)
+    b:SetScript("OnClick", function(self)
+        local sort = AHF.browseSort
+        if sort and sort.kind == self.kind then
+            sort.reverse = not sort.reverse
+        else
+            AHF.browseSort = { kind = self.kind, reverse = false }
+        end
+        AHF:SortBrowseResults()
+        AHF:UpdateSortArrows()
+    end)
+    ns.Theme.Tooltip(b, "Sort", "Click to sort the results by this column; click again to reverse. "
+        .. "Sorts the results loaded so far (more load as you scroll).")
+    return b
+end
+
+-- Click areas over our sortable headers (Blizzard's header buttons are shared
+-- with its own columns, so they aren't changed)
+function AHF:PlaceSortButtons(entry, cols)
+    if entry.key ~= "browse" then return end
+    entry.sortButtons = entry.sortButtons or {}
+    local n = 0
+    for _, c in ipairs(cols or {}) do
+        local def = ours[c.col]
+        local h = def and SORT_VALUE[def.kind] and c.col:GetHeaderFrame()
+        if h and h:IsShown() then
+            n = n + 1
+            local b = entry.sortButtons[n]
+            if not b then
+                b = MakeSortButton(h:GetParent())
+                entry.sortButtons[n] = b
+            end
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", h, "TOPLEFT")
+            b:SetPoint("BOTTOMRIGHT", h, "BOTTOMRIGHT")
+            b.kind, b.header = def.kind, h
+            b:Show()
+        end
+    end
+    for i = n + 1, #entry.sortButtons do entry.sortButtons[i]:Hide() end
+    self:UpdateSortArrows()
+end
+
+function AHF:SetupSorting(f)
+    local brf = type(f.BrowseResultsFrame) == "table" and f.BrowseResultsFrame or nil
+    if not brf then return end
+    if type(brf.UpdateBrowseResults) == "function" then
+        hooksecurefunc(brf, "UpdateBrowseResults", function() AHF:SortBrowseResults() end)
+    end
+    if type(brf.SetSortOrder) == "function" then
+        hooksecurefunc(brf, "SetSortOrder", function()
+            AHF.browseSort = nil
+            AHF:UpdateSortArrows()
+        end)
+    end
+end
+
 -- Fills in cells that were waiting for an item's info
 local function RefreshExtraCells()
+    if AHF.browseSort then AHF:SortBrowseResults() end
     for _, entry in ipairs(AHF.columnEntries or {}) do
         local tb = entry.list.tableBuilder
         for _, col in ipairs(tb and tb:GetColumns() or {}) do

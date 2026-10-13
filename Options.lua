@@ -346,8 +346,24 @@ local function BuildWindow()
         hint = "/ahf opens these settings. /ahf news shows what's new.",
         version = function() return AHF.CurrentNewsVersion and AHF:CurrentNewsVersion() end,
         onShow = RunRefreshers,
+        onHide = function() if AHF.embedded then AHF:HideTabPanel() end end,
     })
+    -- The X (header) and Close (footer) buttons, hidden while the window sits
+    -- in the Auction House's own tab
+    win.closeButtons = {}
+    for _, part in ipairs({ win.header, win.footer }) do
+        for _, child in ipairs({ part:GetChildren() }) do
+            if child.GetObjectType and child:GetObjectType() == "Button" then
+                win.closeButtons[#win.closeButtons + 1] = child
+            end
+        end
+    end
     AHF.configWindow = win
+end
+
+function AHF:GetConfigWindow()
+    if not win then BuildWindow() end
+    return win
 end
 
 -- A setting changed from a command: repaint the window if it's open
@@ -358,6 +374,12 @@ end
 -- nil toggles the window; a tab key opens that tab
 function AHF:ToggleConfig(tab)
     if not win then BuildWindow() end
+    -- With the Auction House open, the settings open in its own tab
+    if self.frame and self.frame:IsShown() and self.ShowTabPanel then
+        if not tab and self.embedded and win:IsShown() then self:HideTabPanel() return end
+        self:ShowTabPanel(tab)
+        return
+    end
     if not tab and win:IsShown() then win:Hide() return end
     win:Show()
     win:Raise()

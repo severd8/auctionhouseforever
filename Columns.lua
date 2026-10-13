@@ -425,6 +425,7 @@ function AHF:ArrangeColumns(entry)
     if box and tb.SetTableWidth then tb:SetTableWidth(box:GetWidth() or 0) end
     tb:Arrange()
     PlaceGrips(entry, cols)
+    if self.PlaceSortButtons then self:PlaceSortButtons(entry, cols) end
     ApplyRowFonts(entry)
 end
 

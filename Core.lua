@@ -203,6 +203,8 @@ function AHF:OnAuctionHouseLoaded()
     self:SetupLayout(f)
     self:SetupColumns(f)
     self:SetupColumnsButton(f)
+    self:SetupSorting(f)
+    self:SetupTab(f)
     self:StretchBackgrounds()
     self:ApplyLayout()
 end

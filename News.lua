@@ -6,8 +6,10 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
-    { version = "1.2.3", date = "2026-10-13", items = {
-        "Category buttons stretch to the list's width. Text sizes are now 110% to 200% of the game's.",
+    { version = "1.3.0", date = "2026-10-13", items = {
+        "Settings in their own AH Forever tab inside the Auction House.",
+        "Click the iLvl, Req Lvl, Vendor or Type header to sort the results.",
+        "Category buttons fill the list's width. Text sizes are now 110% to 200% of the game's.",
     } },
     { version = "1.2.2", date = "2026-10-13", items = {
         "Fixed: an error when moving the mouse over the search results, and the Columns button's name.",
