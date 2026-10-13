@@ -214,8 +214,9 @@ assertEq(list.tableBuilder:Width("Median"), 150, "Median width put back")
 -- An addon adding its column right after Blizzard's layout, outside the layout
 hooksecurefunc(list, "UpdateTableBuilderLayout", function(self)
     local t = self.tableBuilder
-    if not t:Column("Late") then t:AddColumn("Late", 50, nil, 0); t:Arrange() end
+    if LATE_ON and not t:Column("Late") then t:AddColumn("Late", 50, nil, 0); t:Arrange() end
 end)
+LATE_ON = true
 AHF.charDB.columns.browse.widths.Late = 70
 list:SetTableBuilderLayout(BrowseLayout)
 assertEq(list.tableBuilder:Width("Late"), 50, "late column has the addon's width at first")
@@ -223,6 +224,7 @@ RunTimers()
 assertEq(list.tableBuilder:Width("Late"), 70, "and its saved width a frame later")
 assertEq(AHF:DefaultColumnWidth("browse", "Late"), 50, "its own default remembered")
 AHF.charDB.columns.browse.widths.Late = nil
+LATE_ON = false
 list:SetTableBuilderLayout(BrowseLayout)
 RunTimers()
 tb = list.tableBuilder
@@ -255,6 +257,72 @@ end
 assertEq(buy.tableBuilder:Width("Bid"), 160, "Bid wider")
 assertEq(AHF.charDB.columns.itemBuy.widths.Bid, 160, "saved for that list")
 assertEq(AHF.charDB.columns.browse.widths.Bid, nil, "not for the browse list")
+
+step("hide and show columns")
+tb = list.tableBuilder
+assertEq(tb:Names(), "Price,Name,Available,*", "Blizzard's columns")
+local avail = tb:Column("Available")
+AHF:SetColumnShown("browse", "Available", false)
+assertEq(tb:Names(), "Price,Name,*", "Available hidden")
+assertEq(avail.header.__shown, false, "its header hidden")
+assert((avail.resets or 0) >= 1, "its cells let go")
+near(tb:Width("Name"), list.ScrollBox:GetWidth() - 146 - 29, "Name takes the room")
+assertEq(AHF.charDB.columns.browse.hidden.Available, true, "saved per character")
+list:SetTableBuilderLayout(BrowseLayout)   -- a new layout: still hidden
+tb = list.tableBuilder
+assertEq(tb:Names(), "Price,Name,*", "still hidden after a new layout")
+AHF:SetColumnShown("browse", "Available", true)
+assertEq(tb:Names(), "Price,Name,Available,*", "shown again, in its place")
+assertEq(tb:Column("Available").header.__shown, true, "header back")
+AHF:SetColumnShown("browse", "Name", false)
+assertEq(tb:Names(), "Price,Name,Available,*", "Name is never hidden")
+AHF:SetColumnShown("browse", "Name", true)
+
+step("reorder columns")
+AHF:MoveColumn("browse", "Name", -1)
+assertEq(tb:Names(), "Name,Price,Available,*", "Name first; the star keeps its place")
+local lc = AHF:ListColumns("browse")
+assertEq(lc[1].name .. lc[2].name .. lc[3].name, "NamePriceAvailable", "settings list in the new order")
+assertEq(lc[1].fill, true, "Name is the fill column")
+local g1
+for _, g in ipairs(entry.grips) do if g.__shown then g1 = g break end end
+assertEq(g1.colName, "Price", "Name | Price divider resizes Price")
+assertEq(g1.sign, -1, "from its left edge")
+list:SetTableBuilderLayout(BrowseLayout)
+tb = list.tableBuilder
+assertEq(tb:Names(), "Name,Price,Available,*", "order kept after a new layout")
+AHF:MoveColumn("browse", "Available", -1)
+assertEq(tb:Names(), "Name,Available,Price,*", "Available moved left")
+AHF:MoveColumn("browse", "Name", -1)
+assertEq(tb:Names(), "Name,Available,Price,*", "nothing left of the first")
+-- A column another addon adds stays after the column it was built after
+list:SetTableBuilderLayout(WithMedian)
+tb = list.tableBuilder
+assertEq(tb:Names(), "Name,Median,Available,Price,*", "Median follows Name")
+AHF:SetColumnShown("browse", "Median", false)
+assertEq(tb:Names(), "Name,Available,Price,*", "Median hidden")
+AHF:ResetColumnLayout("browse")
+assertEq(tb:Names(), "Price,Name,Median,Available,*", "one list back to all shown, Blizzard's order")
+assertEq(AHF.charDB.columns.browse.widths.Median, 150, "widths stay")
+list:SetTableBuilderLayout(BrowseLayout)
+RunTimers()
+tb = list.tableBuilder
+assertEq(tb:Names(), "Price,Name,Available,*", "plain layout")
+
+step("row text size")
+local row = list.ScrollBox.__rows[1]
+local cellText = row.__children[1].Text
+local deep = row.__children[1].__children[2].Gold
+AHF:SetRowFontSize(13)
+assertEq(select(2, cellText:GetFont()), 13, "row text bigger")
+assertEq(select(2, deep:GetFont()), 13, "nested text too (prices)")
+list:SetTableBuilderLayout(BrowseLayout)
+assertEq(select(2, cellText:GetFont()), 13, "kept after a new layout")
+list.ScrollBox.__callbacks.OnLayout()
+AHF:SetRowFontSize(0)
+assertEq(select(2, cellText:GetFont()), 10, "back to the game's own size")
+AHF:SetRowFontSize(7)
+assertEq(AHF.db.rowFontSize, 0, "only the listed sizes")
 
 step("category list width")
 AHF:SetSidebarWidth(250)
@@ -302,10 +370,43 @@ near(AHF.db.scale, 1.2, "scale slider in %")
 findTip("Scale"):SetValue(100)
 findTip("Category list width"):SetValue(200)
 assertEq(cat:GetWidth(), 200, "sidebar slider")
-local resetCols = findTip("Reset column widths")
+local resetCols = findTip("Reset all columns")
 resetCols.__scripts.OnClick(resetCols)
 assertEq(AHF:SavedColumnCount(), 0, "column widths reset")
 assertEq(buy.tableBuilder:Width("Bid"), 140, "Bid back to default")
+-- Show & order tab
+win:ShowTab("order")
+local function findAll(title)
+    local t = {}
+    for _, x in ipairs(AHF.optionTips) do if x.title == title then t[#t + 1] = x.widget end end
+    return t
+end
+local switches, ups, downs = findAll("Show this column"), findAll("Move left"), findAll("Move right")
+assertEq(switches[1].label:GetText():find("Price", 1, true) ~= nil, true, "first row is Price")
+assertEq(switches[2].disabled, true, "Name can't be hidden")
+assertEq(ups[1].disabled, true, "first can't move left")
+assertEq(switches[4].__shown, false, "only as many rows as columns")
+switches[3].__scripts.OnClick(switches[3])
+assertEq(AHF.charDB.columns.browse.hidden.Available, true, "switch hides Available")
+assertEq(switches[3].on, false, "switch repainted")
+assertEq(list.tableBuilder:Names(), "Price,Name,*", "hidden in the list")
+downs[1].__scripts.OnClick(downs[1])
+assertEq(list.tableBuilder:Names(), "Name,Price,*", "Price moved right")
+assert(switches[1].label:GetText():find("Name", 1, true), "rows repainted in the new order")
+local pick = findTip("List")
+pick.__scripts.OnClick(pick)
+local menu = MENUS[#MENUS]
+assertEq(#menu.entries, 2, "both seen lists offered")
+menu.entries[2].fn()
+assert(switches[1].label:GetText():find("Bid", 1, true), "item buy list shown")
+menu.entries[1].fn()
+local showAll = findTip("Show all, default order")
+showAll.__scripts.OnClick(showAll)
+assertEq(list.tableBuilder:Names(), "Price,Name,Available,*", "Show all, default order")
+local fontPick = findTip("Row text size")
+fontPick.__scripts.OnClick(fontPick)
+MENUS[#MENUS].entries[5].fn()
+assertEq(AHF.db.rowFontSize, 12, "row text size menu")
 local splashSwitch = findTip("Show welcome screen after updates")
 splashSwitch.__scripts.OnClick(splashSwitch)
 assertEq(AHF.db.showSplash, false, "welcome screen off")
@@ -313,6 +414,8 @@ splashSwitch.__scripts.OnClick(splashSwitch)
 
 step("reset to default needs two clicks")
 AHF.charDB.columns.browse.widths.Price = 300
+AHF:SetColumnShown("browse", "Available", false)
+AHF:MoveColumn("browse", "Name", -1)
 local resetAll = findTip("Reset to default")
 resetAll.__scripts.OnClick(resetAll)
 assertEq(AHF.db.width, 1300, "first click only asks")
@@ -324,6 +427,9 @@ assertEq(AHF.db.sidebarWidth, 168, "sidebar default")
 assertEq(AHF.db.point, nil, "position default")
 assertEq(AHF.db.showSplash, true, "welcome screen setting kept")
 assertEq(AHF:SavedColumnCount(), 0, "columns default")
+assertEq(list.tableBuilder:Names(), "Price,Name,Available,*", "all shown, Blizzard's order")
+assertEq(AHF.db.rowFontSize, 0, "row text size default")
+assertEq(select(2, list.ScrollBox.__rows[1].__children[1].Text:GetFont()), 10, "row text back")
 assertEq(f:GetWidth(), 1000, "window resized")
 assertEq(select(4, f:GetPoint(1)), 20, "back where Blizzard put it")
 -- The confirmation runs out
@@ -381,7 +487,14 @@ local char = AHF.PrepareCharSettings({ columns = { browse = { widths = { Price =
 assertEq(char.columns.bad, nil, "broken list dropped")
 assertEq(char.columns.browse.widths.Price, nil, "broken width dropped")
 assertEq(char.columns.browse.widths.Name, 400, "width limit")
-assert(type(char.columns.browse.hidden) == "table" and type(char.columns.browse.order) == "table", "v1.1 fields ready")
+assert(type(char.columns.browse.hidden) == "table" and type(char.columns.browse.order) == "table", "hidden and order made")
+local char2 = AHF.PrepareCharSettings({ columns = { browse = { hidden = { Price = true, Name = "x" },
+    order = { "Name", 5, "Price" } } } })
+assertEq(char2.columns.browse.hidden.Price, true, "hidden kept")
+assertEq(char2.columns.browse.hidden.Name, nil, "broken hidden dropped")
+assertEq(table.concat(char2.columns.browse.order, ","), "Name,Price", "broken order entry dropped")
+assertEq(AHF.PrepareSettings({ rowFontSize = 11 }).rowFontSize, 11, "row text size kept")
+assertEq(AHF.PrepareSettings({ rowFontSize = 8 }).rowFontSize, 0, "unknown row text size")
 
 step("never buys, bids or posts")
 assertEq(#PURCHASES, 0, "no auction actions")
@@ -395,7 +508,7 @@ end
 
 step("news matches the changelog")
 local cl = assert(io.open(ADDON_DIR .. "/CHANGELOG.md")):read("*a")
-local top = cl:match("\n## ([%d%.]+)") or cl:match("^## ([%d%.]+)")
+local top = cl:match("^## ([%d%.]+)") or cl:match("\n## ([%d%.]+)")
 assertEq(AHF.NEWS[1].version, top, "News.lua top version = CHANGELOG.md top version")
 
 print("ALL TESTS PASSED")

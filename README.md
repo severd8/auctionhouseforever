@@ -2,7 +2,7 @@
 
 # AuctionHouse Forever
 
-**A bigger, roomier Auction House: resize it, move it, scale it, and drag its columns wider.**
+**A bigger, roomier Auction House: resize it, move it, scale it, and set up its columns your way.**
 
 AuctionHouse Forever is an addon for **World of Warcraft: Forever**. It changes only the size and layout of the Auction House window (the category list on the left, the results on the right, the tabs at the bottom), so long item names stop getting cut off and you can see more results at once.
 
@@ -17,6 +17,8 @@ It works alongside Auctionator and other Auction House addons: their tabs, colum
 - **Movable.** Drag the title bar to put the window anywhere. Lock it in place when you're happy with it.
 - **Scale** the whole window from 60% to 150%.
 - **Column widths.** Drag the line between two column headers to resize a column. Double-click the line for the column's default width. Works on every list (Buy, Sell, Auctions) and on columns added by other addons, like a Median price column. Saved for each character.
+- **Hide, show and reorder columns.** Switch off the columns you don't need and put the rest in the order you like, for each list. Columns from other addons too.
+- **Row text size** for every list.
 - **Category list width.** Make the list of categories on the left wider.
 - **Settings window** with hover help on every option, and a Reset to default button.
 
@@ -33,6 +35,7 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 - **Resize** — drag the grip in the bottom right corner of the Auction House.
 - **Move** — drag the title bar at the top. Lock it with `/ahf lock` or in the settings.
 - **Resize a column** — point at the line between two column headers (it turns gold) and drag. Double-click the line to put that column back to its default width.
+- **Hide, show or reorder columns** — settings → **Show & order** tab. Pick a list, then use the switch and the arrows beside each column. The Name column always shows.
 - **Open the settings** — type `/ahf`, or go to **Options → AddOns → AuctionHouse Forever**.
 
 ### Settings window
@@ -40,7 +43,8 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 | Tab | What's there |
 |---|---|
 | **Window** | Width, height and scale, lock the window, reset position |
-| **Columns** | Category list width, how many columns have their own width, reset column widths |
+| **Columns** | Category list width, row text size, how many columns have their own width, reset all columns |
+| **Show & order** | For each list: show or hide each column, move it left or right, show all in the default order |
 | **General** | Welcome screen, Reset to default, command list |
 
 ### Slash commands
@@ -50,7 +54,7 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 | `/ahf` | Open or close the settings |
 | `/ahf lock` · `/ahf unlock` | Lock or unlock the window's position |
 | `/ahf reset` | Size, position and scale back to the defaults |
-| `/ahf columns` | Column widths back to the defaults |
+| `/ahf columns` | Every column shown, in the default order and width |
 | `/ahf news` | Show the welcome / what's new window |
 
 `/auctionhouseforever` works too.
@@ -58,7 +62,8 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 ## Good to know
 
 - **It never buys, bids or posts anything.** Every purchase is still your own click on Blizzard's (or Auctionator's) buttons.
-- **Size, position and scale** are shared by all your characters. **Column widths** are saved for each character.
+- **Size, position, scale and row text size** are shared by all your characters. **Columns** (widths, hidden, order) are saved for each character.
+- Hiding a column only takes it off the screen: nothing is deleted, and other addons' columns come back when you show them again.
 - Until you drag the window, it opens where Blizzard puts it.
 - The window is never bigger than your screen, and the Name column never gets narrower than 150 pixels: if the window is too narrow, widened columns give the room back first.
 

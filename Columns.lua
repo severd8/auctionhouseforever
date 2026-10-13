@@ -1,16 +1,17 @@
--- AuctionHouse Forever: column widths. Drag the divider between two column
--- headers to resize a column; double-click it for the column's default width.
+-- AuctionHouse Forever: columns. Drag the divider between two column headers to
+-- resize a column (double-click it for the column's default width); hide, show
+-- and reorder columns in the settings; pick the row text size.
 --
 -- Every Auction House list is a table builder: Blizzard (and addons such as the
 -- one adding the Median column) add columns in a layout function, then
 -- tableBuilder:Arrange() gives each one its width. One "fill" column (Name)
--- takes whatever is left. After each layout, the saved widths are put on the
--- fixed columns and the table is arranged again. Columns are known by their
--- header text, so columns from other addons are resized the same way and are
--- never removed, replaced or moved.
---
--- Room for v1.1: ColumnState() also holds hidden = {} and order = {} per list;
--- hiding and reordering would go in ApplyWidths, next to the widths.
+-- takes whatever is left. After each layout, the saved settings are put on:
+-- hidden columns are taken out of the table builder's list (kept here, and put
+-- back when shown again), named columns are put in the saved order (columns
+-- without a header, like the favourite star, keep their place), the saved
+-- widths go on the fixed columns, and the table is arranged again. Columns are
+-- known by their header text, so columns from other addons are handled the same
+-- way and are never deleted or replaced.
 
 local _, ns = ...
 local AHF = ns.AHF
@@ -63,24 +64,14 @@ local function IsFill(col)
     return type(c) == "number" and c > 0
 end
 
--- The table's columns with their names (a second column with the same name
--- gets " 2" added)
+-- The table's (shown) columns, with their names
 local function Columns(entry)
     local tb = entry.list.tableBuilder
     local cols = tb and tb.GetColumns and tb:GetColumns()
     if not cols or #cols == 0 then return nil, tb end
     local out, used = {}, {}
     for i, col in ipairs(cols) do
-        local name = ColumnName(col)
-        if name then
-            if used[name] then
-                used[name] = used[name] + 1
-                name = name .. " " .. used[name]
-            else
-                used[name] = 1
-            end
-        end
-        out[i] = { col = col, name = name, fill = IsFill(col) }
+        out[i] = { col = col, name = entry.names[col], fill = IsFill(col) }
     end
     return out, tb
 end
@@ -221,14 +212,173 @@ local function PlaceGrips(entry, cols)
 end
 
 ---------------------------------------------------------------------------
+-- Hidden columns and order
+---------------------------------------------------------------------------
+-- Names for a list of columns, by header text (a second column with the same
+-- name gets " 2" added)
+local function NameColumns(cols)
+    local names, used = setmetatable({}, { __mode = "k" }), {}
+    for _, col in ipairs(cols) do
+        local name = ColumnName(col)
+        if name then
+            if used[name] then
+                used[name] = used[name] + 1
+                name = name .. " " .. used[name]
+            else
+                used[name] = 1
+            end
+            names[col] = name
+        end
+    end
+    return names
+end
+
+-- Keeps entry.natural: every column of the list in the order it was built,
+-- hidden ones included. A layout made of new column objects is a new build;
+-- a few new columns among ours were added by another addon and go after the
+-- column before them.
+local function SyncNatural(entry, cur)
+    local new = 0
+    for _, col in ipairs(cur) do if not entry.known[col] then new = new + 1 end end
+    if new == 0 then return false end
+    if new == #cur then
+        entry.natural = {}
+        entry.known = setmetatable({}, { __mode = "k" })
+        for i, col in ipairs(cur) do entry.natural[i] = col; entry.known[col] = true end
+    else
+        for i, col in ipairs(cur) do
+            if not entry.known[col] then
+                local at = 1
+                for j, c in ipairs(entry.natural) do if c == cur[i - 1] then at = j + 1 break end end
+                table.insert(entry.natural, at, col)
+                entry.known[col] = true
+            end
+        end
+    end
+    entry.names = NameColumns(entry.natural)
+    return true
+end
+
+-- Named columns sorted by the saved order. A column missing from it (new, or
+-- from another addon) stays right after the column it was built after.
+local function SortNamed(cols, names, order)
+    local rankOf = {}
+    for i, n in ipairs(order) do rankOf[n] = i end
+    local ranked, last = {}, 0
+    for i, col in ipairs(cols) do
+        local r = rankOf[names[col]]
+        if r then last = r else r = last + i / 1000 end
+        ranked[#ranked + 1] = { col = col, r = r, i = i }
+    end
+    table.sort(ranked, function(a, b)
+        if a.r ~= b.r then return a.r < b.r end
+        return a.i < b.i
+    end)
+    local out = {}
+    for k, v in ipairs(ranked) do out[k] = v.col end
+    return out
+end
+
+-- Puts the shown columns, in the saved order, into the table builder's list.
+-- The fill column (Name) is never hidden.
+local function ShapeColumns(entry, tb)
+    local cur = tb:GetColumns()
+    if SyncNatural(entry, cur) then AHF:RefreshOptions() end
+    local state = AHF:ColumnState(entry.key)
+    local names = entry.names
+    local shown, hidden = {}, {}
+    for _, col in ipairs(entry.natural) do
+        local name = names[col]
+        if name and state.hidden[name] and not IsFill(col) then
+            hidden[#hidden + 1] = col
+        else
+            shown[#shown + 1] = col
+        end
+    end
+    local named, slots = {}, {}
+    for i, col in ipairs(shown) do
+        if names[col] then named[#named + 1] = col; slots[#slots + 1] = i end
+    end
+    named = SortNamed(named, names, state.order)
+    for k, i in ipairs(slots) do shown[i] = named[k] end
+
+    local same = #shown == #cur
+    for i = 1, #shown do if shown[i] ~= cur[i] then same = false break end end
+    if not same then
+        for i = #cur, 1, -1 do cur[i] = nil end
+        for i, col in ipairs(shown) do cur[i] = col end
+    end
+    -- Hidden columns let go of their cells; shown ones get their header back
+    for _, col in ipairs(hidden) do
+        if col.Reset then col:Reset() end
+        local h = col:GetHeaderFrame()
+        if h then h:Hide() end
+    end
+    for _, col in ipairs(shown) do
+        local h = col:GetHeaderFrame()
+        if h and not h:IsShown() then h:Show() end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Row text size
+---------------------------------------------------------------------------
+local fontBase = setmetatable({}, { __mode = "k" })   -- font strings changed, and their own font
+
+local function SetRowFonts(frame, size, depth)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r.GetObjectType and r:GetObjectType() == "FontString" and r.SetFont then
+            if not fontBase[r] then
+                local font, base, flags = r:GetFont()
+                if font then fontBase[r] = { font, base, flags } end
+            end
+            local b = fontBase[r]
+            if b then r:SetFont(b[1], size, b[3]) end
+        end
+    end
+    if depth > 0 and frame.GetChildren then
+        for _, child in ipairs({ frame:GetChildren() }) do SetRowFonts(child, size, depth - 1) end
+    end
+end
+
+local function ApplyRowFonts(entry)
+    local size = AHF.db.rowFontSize
+    local box = entry.list.ScrollBox
+    if size == 0 or not box or not box.ForEachFrame then return end
+    box:ForEachFrame(function(row) SetRowFonts(row, size, 3) end)
+end
+
+-- After a change of the setting: every list's rows, and back to the game's own
+-- font (pooled cells included) at Default
+function AHF:ApplyRowFonts()
+    if self.db.rowFontSize == 0 then
+        for fs, b in pairs(fontBase) do fs:SetFont(b[1], b[2], b[3]) end
+        fontBase = setmetatable({}, { __mode = "k" })
+        return
+    end
+    for _, entry in ipairs(entries) do ApplyRowFonts(entry) end
+end
+
+function AHF:SetRowFontSize(size)
+    local ok = false
+    for _, v in ipairs(self.ROW_FONT_SIZES) do if v == size then ok = true end end
+    self.db.rowFontSize = ok and size or 0
+    self:ApplyRowFonts()
+    self:RefreshOptions()
+end
+
+---------------------------------------------------------------------------
 -- Widths
 ---------------------------------------------------------------------------
 -- Lays the columns out across the list's current width, keeping at least
 -- NAME_MIN for the fill column: dragged columns give way first (back towards
 -- Blizzard's width) when the window is too narrow. Saved widths don't change.
 function AHF:ArrangeColumns(entry)
-    local cols, tb = Columns(entry)
-    if not cols then PlaceGrips(entry, nil) return end
+    local tb = entry.list.tableBuilder
+    local cur = tb and tb.GetColumns and tb:GetColumns()
+    if not cur or #cur == 0 then PlaceGrips(entry, nil) return end
+    ShapeColumns(entry, tb)
+    local cols = Columns(entry)
     -- Blizzard's width of each column seen for the first time, before any change
     defaults[entry.key] = defaults[entry.key] or {}
     local def = defaults[entry.key]
@@ -261,17 +411,17 @@ function AHF:ArrangeColumns(entry)
     if box and tb.SetTableWidth then tb:SetTableWidth(box:GetWidth() or 0) end
     tb:Arrange()
     PlaceGrips(entry, cols)
+    ApplyRowFonts(entry)
 end
 
 function AHF:DefaultColumnWidth(listKey, name)
     return defaults[listKey] and defaults[listKey][name]
 end
 
--- Every list back to Blizzard's column widths
+-- Every list back to Blizzard's columns: widths, all shown, Blizzard's order
 function AHF:ResetColumns()
-    for key in pairs(self.charDB.columns) do
-        local state = self.charDB.columns[key]
-        state.widths = {}
+    for _, state in pairs(self.charDB.columns) do
+        state.widths, state.hidden, state.order = {}, {}, {}
     end
     for _, entry in ipairs(entries) do
         local cols = Columns(entry)
@@ -296,13 +446,81 @@ function AHF:SavedColumnCount()
 end
 
 ---------------------------------------------------------------------------
+-- For the settings window: which lists have been seen, and their columns
+---------------------------------------------------------------------------
+local function Entry(key)
+    for _, e in ipairs(entries) do if e.key == key then return e end end
+end
+
+-- Keys of the lists whose columns are known (shown at least once)
+function AHF:KnownColumnLists()
+    local keys = {}
+    for _, e in ipairs(entries) do
+        for _, col in ipairs(e.natural) do
+            if e.names[col] then keys[#keys + 1] = e.key break end
+        end
+    end
+    return keys
+end
+
+-- A list's named columns in the order shown: { name =, fill =, shown = }
+function AHF:ListColumns(key)
+    local e = Entry(key)
+    if not e then return {} end
+    local named = {}
+    for _, col in ipairs(e.natural) do if e.names[col] then named[#named + 1] = col end end
+    local state = self:ColumnState(key)
+    local out = {}
+    for i, col in ipairs(SortNamed(named, e.names, state.order)) do
+        local name, fill = e.names[col], IsFill(col)
+        out[i] = { name = name, fill = fill, shown = fill or not state.hidden[name] }
+    end
+    return out
+end
+
+local function Rearrange(key)
+    local e = Entry(key)
+    if e then AHF:ArrangeColumns(e) end
+    AHF:RefreshOptions()
+end
+
+function AHF:SetColumnShown(key, name, shown)
+    self:ColumnState(key).hidden[name] = (not shown) or nil
+    Rearrange(key)
+end
+
+-- Moves a column one place left (-1) or right (+1) among the named columns
+function AHF:MoveColumn(key, name, delta)
+    local list = self:ListColumns(key)
+    local order = {}
+    for i, c in ipairs(list) do order[i] = c.name end
+    for i, n in ipairs(order) do
+        if n == name then
+            local j = i + delta
+            if j >= 1 and j <= #order then order[i], order[j] = order[j], order[i] end
+            break
+        end
+    end
+    self:ColumnState(key).order = order
+    Rearrange(key)
+end
+
+-- One list: every column shown, in Blizzard's order (widths stay)
+function AHF:ResetColumnLayout(key)
+    local state = self:ColumnState(key)
+    state.hidden, state.order = {}, {}
+    Rearrange(key)
+end
+
+---------------------------------------------------------------------------
 -- Setup when the Auction House loads
 ---------------------------------------------------------------------------
 function AHF:SetupColumns(f)
     for _, def in ipairs(self.COLUMN_LISTS) do
         local list = Resolve(f, def.path)
         if list and type(list.UpdateTableBuilderLayout) == "function" then
-            local entry = { key = def.key, list = list, grips = {} }
+            local entry = { key = def.key, list = list, grips = {}, natural = {},
+                known = setmetatable({}, { __mode = "k" }), names = {} }
             entries[#entries + 1] = entry
             -- After every layout Blizzard (or another addon) builds
             hooksecurefunc(list, "UpdateTableBuilderLayout", function()
@@ -320,6 +538,10 @@ function AHF:SetupColumns(f)
                 box:HookScript("OnSizeChanged", function()
                     if list:IsVisible() then AHF:ArrangeColumns(entry) end
                 end)
+            end
+            -- Rows are reused as the list scrolls: give new ones the text size
+            if box and box.RegisterCallback then
+                pcall(box.RegisterCallback, box, "OnLayout", function() ApplyRowFonts(entry) end, entry)
             end
         end
     end

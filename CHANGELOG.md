@@ -1,3 +1,13 @@
+## 1.1.0
+
+Columns your way.
+
+- **Hide and show columns.** New **Show & order** tab in the settings (`/ahf`): pick a list, then switch any column off or on. A hidden column comes back in its place when you turn it on again. The Name column always shows.
+- **Reorder columns** with the arrows beside each column, for example Name first. Columns without a header (the favourite star) keep their place.
+- Works on every list (Buy, Sell, Auctions), each with its own columns, saved for each character. Columns added by other addons (like Median) can be hidden and moved too; a new one appears after the column it belongs beside.
+- **Row text size** (Columns tab): Default, or 9 to 14, for the text in every list's rows.
+- **Show all, default order** puts one list back to Blizzard's columns. **Reset all columns** (and `/ahf columns`) now also shows hidden columns and puts the order back, as well as the widths. **Reset to default** includes all of it.
+
 ## 1.0.0
 
 First release.

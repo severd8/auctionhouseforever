@@ -33,7 +33,7 @@ AHF.DEFAULTS = {
     scale = 1,
     locked = false,
     sidebarWidth = AHF.BLIZZARD_SIDEBAR,
-    rowFontSize = 0,       -- reserved for v1.1 (row text size); 0 = the game's own
+    rowFontSize = 0,       -- text size in the lists' rows; 0 = the game's own
     showSplash = true,
     lastSeenVersion = "",
 }
@@ -44,10 +44,11 @@ AHF.LIMITS = {
     height = { AHF.BLIZZARD_HEIGHT, 1100 },
     scale = { 0.6, 1.5 },
     sidebarWidth = { AHF.BLIZZARD_SIDEBAR, 320 },
-    rowFontSize = { 0, 18 },
+    rowFontSize = { 0, 14 },
     column = { 30, 400 },   -- a column dragged by its divider
 }
 AHF.NAME_MIN = 150          -- the Name column never gets narrower than this
+AHF.ROW_FONT_SIZES = { 0, 9, 10, 11, 12, 13, 14 }   -- the row text size choices (0 = Default)
 
 local function Clamp(v, range)
     if v < range[1] then return range[1] end
@@ -70,15 +71,18 @@ local function PrepareSettings(db)
         if type(db[k]) == "number" then db[k] = Clamp(db[k], range) end
     end
     if db.point ~= nil and not ValidPoint(db.point) then db.point = nil end
+    local sizeOk = false
+    for _, v in ipairs(AHF.ROW_FONT_SIZES) do if v == db.rowFontSize then sizeOk = true end end
+    if not sizeOk then db.rowFontSize = 0 end
     db.schema = AHF.SCHEMA
     return db
 end
 AHF.PrepareSettings = PrepareSettings
 
--- Per character: column widths, per list. Each list keeps
---   widths = { [column name] = width }   (v1)
---   hidden = { [column name] = true }    (reserved for v1.1)
---   order  = { column name, ... }        (reserved for v1.1)
+-- Per character: columns, per list. Each list keeps
+--   widths = { [column name] = width }
+--   hidden = { [column name] = true }
+--   order  = { column name, ... }   (the named columns, left to right)
 local function PrepareCharSettings(db)
     if type(db.columns) ~= "table" then db.columns = {} end
     for key, state in pairs(db.columns) do
@@ -92,6 +96,14 @@ local function PrepareCharSettings(db)
                 if type(w) ~= "number" then state.widths[name] = nil
                 else state.widths[name] = Clamp(w, AHF.LIMITS.column) end
             end
+            for name, v in pairs(state.hidden) do
+                if v ~= true or type(name) ~= "string" then state.hidden[name] = nil end
+            end
+            local order = {}
+            for _, name in ipairs(state.order) do
+                if type(name) == "string" then order[#order + 1] = name end
+            end
+            state.order = order
         end
     end
     db.schema = AHF.SCHEMA
@@ -129,7 +141,7 @@ function AHF:ResetWindow()
     self:ResetPosition()
 end
 
--- Every setting back to its default, column widths included
+-- Every setting back to its default, columns included
 function AHF:ResetAll()
     local db = self.db
     for k, v in pairs(self.DEFAULTS) do
@@ -137,6 +149,7 @@ function AHF:ResetAll()
     end
     self:ResetPosition()
     self:ResetColumns()
+    self:ApplyRowFonts()
 end
 
 ---------------------------------------------------------------------------
@@ -164,7 +177,7 @@ AHF.COMMANDS = {
     { "/ahf", "open or close the settings" },
     { "/ahf lock · /ahf unlock", "lock or unlock the window's position" },
     { "/ahf reset", "size, position and scale back to the defaults" },
-    { "/ahf columns", "column widths back to the defaults" },
+    { "/ahf columns", "every column shown, default order and widths" },
     { "/ahf news", "show the welcome / what's new window" },
 }
 
@@ -188,7 +201,7 @@ SlashCmdList.AUCTIONHOUSEFOREVER = function(msg)
         Print("window size, position and scale reset.")
     elseif msg == "columns" then
         AHF:ResetColumns()
-        Print("column widths reset.")
+        Print("columns reset: all shown, default order and widths.")
     elseif msg == "news" then
         AHF:ToggleSplash()
     else

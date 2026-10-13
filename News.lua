@@ -6,6 +6,10 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.1.0", date = "2026-10-13", items = {
+        "Hide, show and reorder columns: new Show & order tab in the settings (/ahf).",
+        "Row text size for every list (Columns tab).",
+    } },
     { version = "1.0.0", date = "2026-10-13", items = {
         "First release: drag the corner of the Auction House to resize it. Taller shows more rows.",
         "Move it by its title bar (lock it in the settings), and set its scale.",

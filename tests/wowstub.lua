@@ -48,7 +48,10 @@ function Methods:SetText(t) self.__text = t if self.__fs then self.__fs.__text =
 function Methods:GetText() return self.__text end
 function Methods:GetStringWidth() return #(self.__text or "") * 6 end
 function Methods:GetStringHeight() return 12 end
-function Methods:GetFont() return "Fonts\\FRIZQT__.TTF", 10, "" end
+function Methods:GetFont() if self.__font then return unpack(self.__font) end return "Fonts\\FRIZQT__.TTF", 10, "" end
+function Methods:SetFont(f, size, flags) self.__font = { f, size, flags } end
+function Methods:GetChildren() local r = {} for _, c in ipairs(self.__children) do if c.__kind ~= "Texture" and c.__kind ~= "FontString" then r[#r + 1] = c end end return unpack(r) end
+function Methods:GetRegions() local r = {} for _, c in ipairs(self.__children) do if c.__kind == "Texture" or c.__kind == "FontString" then r[#r + 1] = c end end return unpack(r) end
 function Methods:GetObjectType() return self.__kind end
 function Methods:GetName() return self.__name end
 function Methods:SetFontString(fs) self.__fs = fs end
@@ -185,6 +188,7 @@ function Column:GetFixedWidth() return self.fixedWidth end
 function Column:GetFillCoefficient() return self.fill end
 function Column:GetPadding() return self.padding end
 function Column:GetCalculatedWidth() return self.calculatedWidth end
+function Column:Reset() self.resets = (self.resets or 0) + 1 end
 
 local Builder = {}
 Builder.__index = Builder
@@ -230,6 +234,11 @@ end
 function Builder:Width(name)
     for _, c in ipairs(self.columns) do if c.header and c.header.__text == name then return c.calculatedWidth end end
 end
+function Builder:Names()
+    local t = {}
+    for _, c in ipairs(self.columns) do t[#t + 1] = c.header and c.header.__text or "*" end
+    return table.concat(t, ",")
+end
 function Builder:Column(name)
     for _, c in ipairs(self.columns) do if c.header and c.header.__text == name then return c end end
 end
@@ -241,6 +250,19 @@ local function NewItemList(parent, layout)
     list.HeaderContainer = newObj("Frame", nil, list)
     list.ScrollBox = newObj("Frame", nil, list)
     list.ScrollBox.__w = 600
+    -- Two rows, each with a cell holding a font string (and one nested deeper)
+    list.ScrollBox.__rows = {}
+    for i = 1, 2 do
+        local row = newObj("Button", nil, list.ScrollBox)
+        local cell = newObj("Frame", nil, row)
+        cell.Text = cell:CreateFontString()
+        local money = newObj("Frame", nil, cell)
+        money.Gold = money:CreateFontString()
+        list.ScrollBox.__rows[i] = row
+    end
+    function list.ScrollBox:ForEachFrame(fn) for _, r in ipairs(self.__rows) do fn(r) end end
+    list.ScrollBox.__callbacks = {}
+    function list.ScrollBox:RegisterCallback(event, fn) self.__callbacks[event] = fn end
     function list:GetHeaderContainer() return self.HeaderContainer end
     list.tableBuilderLayoutFunction = layout
     list.tableBuilderLayoutDirty = true
