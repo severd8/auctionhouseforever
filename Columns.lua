@@ -63,6 +63,7 @@ local function IsFill(col)
     local c = col.GetFillCoefficient and col:GetFillCoefficient()
     return type(c) == "number" and c > 0
 end
+AHF.IsFillColumn = IsFill
 
 -- The table's (shown) columns, with their names
 local function Columns(entry)
@@ -289,7 +290,7 @@ local function ShapeColumns(entry, tb)
     local shown, hidden = {}, {}
     for _, col in ipairs(entry.natural) do
         local name = names[col]
-        if name and state.hidden[name] and not IsFill(col) then
+        if name and AHF:IsColumnHidden(entry.key, name) and not IsFill(col) then
             hidden[#hidden + 1] = col
         else
             shown[#shown + 1] = col
@@ -341,10 +342,34 @@ local function SetRowFonts(frame, size, depth)
     end
 end
 
+-- Row height for the text size: Blizzard's 20 at Default, taller for big text
+function AHF:RowHeight()
+    local size = self.db.rowFontSize
+    if size == 0 then return self.ROW_HEIGHT end
+    return math.max(self.ROW_HEIGHT, size + 10)
+end
+
+-- The list's rows (and the scroll range, via the view's row extent) at the
+-- current row height. A new row gets it as it's handed out (OnAcquiredFrame),
+-- before Blizzard lays its cells out.
+local function ApplyRowHeight(entry)
+    local box = entry.list.ScrollBox
+    if not AHF.HasRows(box) or not box.GetView then return end
+    local h = AHF:RowHeight()
+    local view = box:GetView()
+    if view.GetElementExtent and view.SetElementExtent and view:GetElementExtent() ~= h then
+        view:SetElementExtent(h)
+        box:ForEachFrame(function(row) row:SetHeight(h) end)
+        if box.FullUpdate then box:FullUpdate(true) elseif box.Update then box:Update() end
+    end
+end
+
 local function ApplyRowFonts(entry)
     local size = AHF.db.rowFontSize
     local box = entry.list.ScrollBox
-    if size == 0 or not AHF.HasRows(box) then return end
+    if not AHF.HasRows(box) then return end
+    ApplyRowHeight(entry)
+    if size == 0 then return end
     box:ForEachFrame(function(row) SetRowFonts(row, size, 3) end)
 end
 
@@ -354,9 +379,12 @@ function AHF:ApplyRowFonts()
     if self.db.rowFontSize == 0 then
         for fs, b in pairs(fontBase) do fs:SetFont(b[1], b[2], b[3]) end
         fontBase = setmetatable({}, { __mode = "k" })
-        return
     end
-    for _, entry in ipairs(entries) do ApplyRowFonts(entry) end
+    for _, entry in ipairs(entries) do
+        ApplyRowFonts(entry)
+        -- Cells take the row's height when arranged
+        if entry.list.tableBuilder then self:ArrangeColumns(entry) end
+    end
 end
 
 function AHF:SetRowFontSize(size)
@@ -377,6 +405,7 @@ function AHF:ArrangeColumns(entry)
     local tb = entry.list.tableBuilder
     local cur = tb and tb.GetColumns and tb:GetColumns()
     if not cur or #cur == 0 then PlaceGrips(entry, nil) return end
+    if self.AddExtraColumns then self:AddExtraColumns(entry, tb) end
     ShapeColumns(entry, tb)
     local cols = Columns(entry)
     -- Blizzard's width of each column seen for the first time, before any change
@@ -473,9 +502,16 @@ function AHF:ListColumns(key)
     local out = {}
     for i, col in ipairs(SortNamed(named, e.names, state.order)) do
         local name, fill = e.names[col], IsFill(col)
-        out[i] = { name = name, fill = fill, shown = fill or not state.hidden[name] }
+        out[i] = { name = name, fill = fill, shown = fill or not self:IsColumnHidden(key, name) }
     end
     return out
+end
+
+-- Hidden: the player's choice, or the column's default (Type starts hidden)
+function AHF:IsColumnHidden(key, name)
+    local v = self:ColumnState(key).hidden[name]
+    if v ~= nil then return v end
+    return self.DefaultHidden and self:DefaultHidden(key, name) or false
 end
 
 local function Rearrange(key)
@@ -485,7 +521,7 @@ local function Rearrange(key)
 end
 
 function AHF:SetColumnShown(key, name, shown)
-    self:ColumnState(key).hidden[name] = (not shown) or nil
+    self:ColumnState(key).hidden[name] = not shown
     Rearrange(key)
 end
 
@@ -542,6 +578,10 @@ function AHF:SetupColumns(f)
             -- Rows are reused as the list scrolls: give new ones the text size
             if box and box.RegisterCallback then
                 pcall(box.RegisterCallback, box, "OnLayout", function() ApplyRowFonts(entry) end, entry)
+                pcall(box.RegisterCallback, box, "OnAcquiredFrame", function(_, row)
+                    local h = AHF:RowHeight()
+                    if row and row.SetHeight and row:GetHeight() ~= h then row:SetHeight(h) end
+                end, entry)
             end
         end
     end

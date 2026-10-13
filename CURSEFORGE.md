@@ -15,8 +15,9 @@ It works alongside Auctionator and other Auction House addons: their tabs, colum
 - **Movable.** Drag the title bar to put the window anywhere. Lock it in place when you're happy with it.
 - **Scale** the whole window from 60% to 150%.
 - **Column widths.** Drag the line between two column headers to resize a column. Double-click the line for the column's default width. Works on every list (Buy, Sell, Auctions) and on columns added by other addons, like a Median price column. Saved for each character.
-- **Hide, show and reorder columns.** Switch off the columns you don't need and put the rest in the order you like, for each list. Columns from other addons too.
-- **Row text size** for every list.
+- **Hide, show and reorder columns** with the **Columns** button beside the search box (or the Show & Order tab). Columns from other addons too.
+- **Extra columns**: **iLvl**, **Req**, **Type** and **Vendor** (green when you could sell it to a vendor for more than the lowest buyout) on the search results; **Per unit** and **Seller** on an item's auctions.
+- **Row text size** for every list; rows grow with bigger text.
 - **Category list width.** Make the list of categories on the left wider.
 - **Settings window** with hover help on every option, and a Reset to default button.
 
@@ -31,14 +32,14 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 - **Resize**: drag the grip in the bottom right corner of the Auction House.
 - **Move**: drag the title bar at the top. Lock it with `/ahf lock` or in the settings.
 - **Resize a column**: point at the line between two column headers (it turns gold) and drag. Double-click the line to put that column back to its default width.
-- **Hide, show or reorder columns**: settings → **Show & Order** tab. Pick a list, then use the switch and the arrows beside each column. The Name column always shows.
+- **Hide, show or reorder columns**: click **Columns** beside the search box: tick a column on or off, or hover it for Move left / Move right. Or use the settings → **Show & Order** tab. The Name column always shows.
 - **Open the settings**: type `/ahf`, or go to **Options → AddOns → AuctionHouse Forever**.
 
 ### Settings window
 
 | Tab | What's there |
 |---|---|
-| **Window** | Width, height and scale, lock the window, reset position |
+| **Window** | Width, height and scale, keep the window in place, reset position |
 | **Columns** | Category list width, row text size, how many columns have their own width, reset all columns |
 | **Show & Order** | For each list: show or hide each column, move it left or right, show all in the default order |
 | **General** | Welcome screen, Reset to default, command list |

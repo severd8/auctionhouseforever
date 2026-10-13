@@ -6,6 +6,11 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.2.0", date = "2026-10-13", items = {
+        "Columns button beside the search box: tick columns on or off and move them.",
+        "New columns: iLvl, Req, Type and Vendor (green = sells to a vendor for more); Per unit and Seller.",
+        "Bigger rows: text size up to 16, and rows grow with it.",
+    } },
     { version = "1.1.2", date = "2026-10-13", items = {
         "Fixed: an error when changing Row text size.",
     } },

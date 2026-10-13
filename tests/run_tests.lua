@@ -19,6 +19,10 @@ for line in toc:gmatch("[^\n]+") do
     if file then load_file(ADDON_DIR .. "/" .. file) end
 end
 local AHF = ns.AHF
+-- AuctionHouse Forever's own columns are tested in their own step; the steps
+-- before it work with Blizzard's columns only
+local OUR_COLUMNS = AHF.EXTRA_COLUMNS
+AHF.EXTRA_COLUMNS = {}
 
 local function fire(event, ...)
     for _, f in ipairs(ALL_FRAMES) do
@@ -193,7 +197,7 @@ step("a column from another addon (Median)")
 local function WithMedian(t)
     BrowseLayout(t)
     table.insert(t.columns, 3, (function()
-        local c = t:AddColumn("Median", 120, nil, 0)
+        local c = t:AddTestColumn("Median", 120, nil, 0)
         table.remove(t.columns)   -- AddColumn appended it; it goes after Name
         return c
     end)())
@@ -214,7 +218,7 @@ assertEq(list.tableBuilder:Width("Median"), 150, "Median width put back")
 -- An addon adding its column right after Blizzard's layout, outside the layout
 hooksecurefunc(list, "UpdateTableBuilderLayout", function(self)
     local t = self.tableBuilder
-    if LATE_ON and not t:Column("Late") then t:AddColumn("Late", 50, nil, 0); t:Arrange() end
+    if LATE_ON and not t:Column("Late") then t:AddTestColumn("Late", 50, nil, 0); t:Arrange() end
 end)
 LATE_ON = true
 AHF.charDB.columns.browse.widths.Late = 70
@@ -322,14 +326,146 @@ local cellText = row.__children[1].Text
 local deep = row.__children[1].__children[2].Gold
 AHF:SetRowFontSize(13)
 assertEq(select(2, cellText:GetFont()), 13, "row text bigger")
+assertEq(list.ScrollBox:GetView().extent, 23, "rows taller with bigger text")
+assertEq(row:GetHeight(), 23, "row frames taller")
+AHF:SetRowFontSize(16)
+assertEq(list.ScrollBox:GetView().extent, 26, "16: 26 tall")
+AHF:SetRowFontSize(13)
 assertEq(select(2, deep:GetFont()), 13, "nested text too (prices)")
 list:SetTableBuilderLayout(BrowseLayout)
 assertEq(select(2, cellText:GetFont()), 13, "kept after a new layout")
 list.ScrollBox.__callbacks.OnLayout()
 AHF:SetRowFontSize(0)
 assertEq(select(2, cellText:GetFont()), 10, "back to the game's own size")
-AHF:SetRowFontSize(7)
+assertEq(list.ScrollBox:GetView().extent, 20, "Blizzard's row height back")
+AHF:SetRowFontSize(9)
 assertEq(AHF.db.rowFontSize, 0, "only the listed sizes")
+
+step("our own columns")
+AHF.EXTRA_COLUMNS = OUR_COLUMNS
+-- Fake item data: a level 20 cloth helm (ilvl 25, sells for 1g) and a herb
+ITEMS = {
+    [100] = { name = "Cowl", ilvl = 25, req = 20, sell = 10000, type = "Armor", sub = "Cloth", loc = "INVTYPE_HEAD", class = 4, subclass = 1 },
+    [200] = { name = "Peacebloom", ilvl = 5, req = 0, sell = 4, type = "Trade Goods", sub = "Herb", loc = "", class = 7, subclass = 9 },
+    [300] = { name = "Ring", ilvl = 30, req = 25, sell = 500, type = "Armor", sub = "Miscellaneous", loc = "INVTYPE_FINGER", class = 4, subclass = 0 },
+}
+INVTYPE_HEAD, INVTYPE_FINGER = "Head", "Finger"
+function GetItemInfo(id)
+    local i = ITEMS[id]
+    if not i or i.uncached then return nil end
+    return i.name, nil, 1, i.ilvl, i.req, i.type, i.sub, 20, i.loc, nil, i.sell
+end
+function GetItemInfoInstant(id)
+    local i = ITEMS[id]
+    if not i then return nil end
+    return id, i.type, i.sub, i.loc, nil, i.class, i.subclass
+end
+function IsEquippableItem(id) local i = ITEMS[id] return i and i.loc ~= "" end
+function GetMoneyString(c) return ("%dg%ds%dc"):format(math.floor(c / 10000), math.floor(c / 100) % 100, c % 100) end
+list:SetTableBuilderLayout(BrowseLayout)
+tb = list.tableBuilder
+assertEq(tb:Names(), "Price,Name,iLvl,Req,Vendor,Available,*", "iLvl, Req, Vendor after Name; Type starts hidden")
+assertEq(tb:Column("iLvl").cellTemplate, "AuctionHouseForeverCellTemplate", "our cell template")
+assertEq(tb:Column("iLvl").cellArgs[1], "ilvl", "cells told their kind")
+assertEq(tb:Column("Vendor"):GetFixedWidth(), 100, "Vendor width")
+lc = AHF:ListColumns("browse")
+local typeRow
+for _, c in ipairs(lc) do if c.name == "Type" then typeRow = c end end
+assertEq(typeRow.shown, false, "Type listed, hidden")
+AHF:SetColumnShown("browse", "Type", true)
+assertEq(tb:Names(), "Price,Name,iLvl,Req,Type,Vendor,Available,*", "Type shown")
+AHF:SetColumnShown("browse", "iLvl", false)
+assertEq(tb:Names(), "Price,Name,Req,Type,Vendor,Available,*", "iLvl hidden")
+list:SetTableBuilderLayout(BrowseLayout)
+tb = list.tableBuilder
+assertEq(tb:Names(), "Price,Name,Req,Type,Vendor,Available,*", "kept after a new layout, added once")
+AHF:ResetColumnLayout("browse")
+assertEq(tb:Names(), "Price,Name,iLvl,Req,Vendor,Available,*", "defaults back")
+-- What the cells show
+local helm = { itemKey = { itemID = 100, itemLevel = 25 }, minPrice = 5000 }
+local herb = { itemKey = { itemID = 200, itemLevel = 5 }, minPrice = 20 }
+local ring = { itemKey = { itemID = 300, itemLevel = 30 }, minPrice = 9000 }
+assertEq(AHF:CellText("ilvl", helm), "25", "helm iLvl")
+assertEq(AHF:CellText("ilvl", herb), "", "no iLvl for a herb")
+assertEq(AHF:CellText("req", helm), "20", "helm Req")
+assertEq(AHF:CellText("req", herb), "", "no Req for a herb")
+assertEq(AHF:CellText("type", helm), "Cloth Head", "armour: material and slot")
+assertEq(AHF:CellText("type", ring), "Finger", "ring: slot only")
+assertEq(AHF:CellText("type", herb), "Herb", "herb: its kind")
+local text, color = AHF:CellText("vendor", helm)
+assertEq(text, "1g0s0c", "vendor price")
+assert(color and color[2] == 1, "under vendor price: green")
+text, color = AHF:CellText("vendor", ring)
+assertEq(color, nil, "above vendor price: white")
+assertEq(AHF:CellText("unit", { buyoutAmount = 1000, quantity = 4 }), "0g2s50c", "per unit")
+assertEq(AHF:CellText("unit", { buyoutAmount = 0, quantity = 4 }), "", "no buyout")
+assertEq(AHF:CellText("seller", { owners = { "Grom" }, totalNumberOfOwners = 1 }), "Grom", "seller")
+assertEq(AHF:CellText("seller", { owners = { "Grom", "Thrall" }, totalNumberOfOwners = 3 }), "Grom +2", "several sellers")
+assertEq(AHF:CellText("seller", { owners = {} }), "", "seller hidden by the game")
+assertEq(AHF:CellText("ilvl", "junk"), "", "bad row data")
+-- An item the game hasn't loaded yet fills in when it arrives
+ITEMS[100].uncached = true
+assertEq(AHF:CellText("req", helm), "", "blank while loading")
+local cell = { rowData = helm, Text = CreateFrame("Frame"):CreateFontString() }
+for k, v in pairs(AuctionHouseForeverCellMixin) do cell[k] = v end
+cell:Init("req")
+tb:Column("Req").cells = { [{}] = cell }
+ITEMS[100].uncached = nil
+fire("GET_ITEM_INFO_RECEIVED", 100)
+RunTimers()
+assertEq(cell.Text:GetText(), "20", "filled in when the item arrives")
+-- Item auctions: Per unit and Seller after Buyout
+buy:SetTableBuilderLayout(buy.tableBuilderLayoutFunction)
+assertEq(buy.tableBuilder:Names(), "Bid,Buyout,Per unit,Seller,*", "item auction columns")
+-- The Columns button: a menu for the list on screen
+local cb = AHF.columnsButton
+assert(cb and cb.__template == "WowStyle1FilterDropdownTemplate", "Columns button in the Filter button's style")
+assertEq(select(2, cb:GetPoint(1)), f.SearchBar.FavoritesSearchButton, "left of the favourites button")
+local function OpenMenu()
+    local root = { items = {} }
+    local function desc(kind, text, a, b)
+        local d = { kind = kind, text = text, a = a, b = b, sub = {} }
+        function d:CreateButton(t, fn) table.insert(self.sub, { text = t, fn = fn }) end
+        function d:SetEnabled(v) self.enabled = v end
+        return d
+    end
+    function root:CreateTitle(t) table.insert(self.items, desc("title", t)) end
+    function root:CreateDivider() table.insert(self.items, desc("divider")) end
+    function root:CreateCheckbox(t, get, set) local d = desc("check", t, get, set) table.insert(self.items, d) return d end
+    function root:CreateButton(t, fn) local d = desc("button", t, fn) table.insert(self.items, d) return d end
+    cb.__menuGen(cb, root)
+    return root.items
+end
+f.ItemBuyFrame.__shown = false
+local items = OpenMenu()
+assertEq(items[1].text, "Buy: search results", "menu for the search results")
+local checks = {}
+for _, it in ipairs(items) do if it.kind == "check" then checks[#checks + 1] = it end end
+assertEq(#checks, 7, "every column listed, Type included")
+assertEq(checks[2].text, "Name", "in the order shown")
+assertEq(checks[2].enabled, false, "Name can't be unticked")
+local typeCheck
+for _, c in ipairs(checks) do if c.text == "Type" then typeCheck = c end end
+assertEq(typeCheck.a(), false, "Type unticked")
+typeCheck.b()
+assertEq(tb:Names(), "Price,Name,iLvl,Req,Type,Vendor,Available,*", "ticking Type shows it")
+assertEq(#checks[1].sub, 1, "first column: Move right only")
+checks[1].sub[1].fn()
+assertEq(tb:Names(), "Name,Price,iLvl,Req,Type,Vendor,Available,*", "Move right")
+local last = items[#items]
+assertEq(last.text, "More settings (/ahf)", "link to the settings")
+items[#items - 1].a()
+assertEq(tb:Names(), "Price,Name,iLvl,Req,Vendor,Available,*", "Show all, default order")
+f.ItemBuyFrame.__shown = true
+f.BrowseResultsFrame.__shown = false
+assertEq(OpenMenu()[1].text, "Buy: item auctions", "menu follows the list on screen")
+f.BrowseResultsFrame.__shown = true
+-- The steps after this one work with Blizzard's columns again
+AHF.EXTRA_COLUMNS = {}
+list:SetTableBuilderLayout(BrowseLayout)
+buy:SetTableBuilderLayout(buy.tableBuilderLayoutFunction)
+tb = list.tableBuilder
+assertEq(tb:Names(), "Price,Name,Available,*", "Blizzard's columns only")
 
 step("category list width")
 AHF:SetSidebarWidth(250)
@@ -373,7 +509,7 @@ local function findTip(title)
     for _, t in ipairs(AHF.optionTips) do if t.title == title then return t.widget end end
     error("no control " .. title)
 end
-local lockSwitch = findTip("Lock the window")
+local lockSwitch = findTip("Keep window in place")
 lockSwitch.__scripts.OnClick(lockSwitch)
 assertEq(AHF.db.locked, true, "switch locks")
 lockSwitch.__scripts.OnClick(lockSwitch)
@@ -422,7 +558,7 @@ showAll.__scripts.OnClick(showAll)
 assertEq(list.tableBuilder:Names(), "Price,Name,Available,*", "Show all, default order")
 local fontPick = findTip("Row text size")
 fontPick.__scripts.OnClick(fontPick)
-MENUS[#MENUS].entries[5].fn()
+MENUS[#MENUS].entries[3].fn()
 assertEq(AHF.db.rowFontSize, 12, "row text size menu")
 local splashSwitch = findTip("Show welcome screen after updates")
 splashSwitch.__scripts.OnClick(splashSwitch)
@@ -511,7 +647,7 @@ assertEq(char2.columns.browse.hidden.Price, true, "hidden kept")
 assertEq(char2.columns.browse.hidden.Name, nil, "broken hidden dropped")
 assertEq(table.concat(char2.columns.browse.order, ","), "Name,Price", "broken order entry dropped")
 assertEq(AHF.PrepareSettings({ rowFontSize = 11 }).rowFontSize, 11, "row text size kept")
-assertEq(AHF.PrepareSettings({ rowFontSize = 8 }).rowFontSize, 0, "unknown row text size")
+assertEq(AHF.PrepareSettings({ rowFontSize = 9 }).rowFontSize, 0, "unknown row text size")
 
 step("never buys, bids or posts")
 assertEq(#PURCHASES, 0, "no auction actions")

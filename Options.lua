@@ -104,10 +104,11 @@ local function BuildWindowTab(p)
     TipAll(reset, "Reset", "Size, scale and position back to the defaults. Same as /ahf reset.")
 
     local pos = Card(p, "Position", 0, -160, PAGE_W, 120)
-    Switch(pos, "Lock the window", 12, -30, function() return AHF.db.locked end,
+    Switch(pos, "Keep window in place", 12, -30, function() return AHF.db.locked end,
         function(v) AHF:SetLocked(v) end,
-        "Unlocked: drag the Auction House by its title bar. Same as /ahf lock and /ahf unlock.")
-    MutedNote(pos, "Until you drag it, the window opens where Blizzard puts it.", NOTE_X, -52, PAGE_W - NOTE_X - 12)
+        "Off: drag the Auction House by its title bar to move it. Until you do, it opens where Blizzard puts it. "
+        .. "Same as /ahf lock and /ahf unlock.")
+    MutedNote(pos, "The title bar won't move it. Your position is saved either way.", NOTE_X, -52, PAGE_W - NOTE_X - 12)
     local back = FlatButton(pos, "Reset position", 130)
     back:SetPoint("TOPLEFT", 12, -78)
     back:SetScript("OnClick", function() AHF:ResetPosition() end)
@@ -139,7 +140,7 @@ local function BuildColumnsTab(p)
     size:SetPoint("TOPLEFT", 150, -98)
     size.menuTitle = "Row text size"
     TipAll(size, "Row text size", "The size of the text in every list's rows: names, prices, quantities. "
-        .. "Default is the game's own size.")
+        .. "Rows get taller with bigger text. Default is the game's own size.")
     AddRefresher(size.Refresh)
 
     local count = Text(cols, "", "GameFontHighlightSmall")

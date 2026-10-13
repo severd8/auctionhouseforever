@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<!-- The cells of AuctionHouse Forever's own columns (Extra.lua). The text gets
+	     the same font as Blizzard's text cells when the game has it (Init). -->
+	<Frame name="AuctionHouseForeverCellTemplate" mixin="AuctionHouseForeverCellMixin" virtual="true">
+		<Size x="0" y="16"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<FontString parentKey="Text" inherits="GameFontHighlightSmall" justifyH="LEFT" wordwrap="false" setAllPoints="true"/>
+			</Layer>
+		</Layers>
+	</Frame>
+</Ui>

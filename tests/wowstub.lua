@@ -62,6 +62,7 @@ function Methods:GetObjectType() return self.__kind end
 function Methods:GetName() return self.__name end
 function Methods:GetParent() return self.__parent end
 function Methods:SetFontString(fs) self.__fs = fs end
+function Methods:SetupMenu(fn) self.__menuGen = fn end
 function Methods:GetFontString() return self.__fs end
 function Methods:SetTexture(t) self.__texture = t end
 function Methods:SetAlpha(a) self.__alpha = a end
@@ -196,6 +197,14 @@ function Column:GetFillCoefficient() return self.fill end
 function Column:GetPadding() return self.padding end
 function Column:GetCalculatedWidth() return self.calculatedWidth end
 function Column:Reset() self.resets = (self.resets or 0) + 1 end
+function Column:ConstructHeader(kind, template, owner, text, sortOrder)
+    self.header = newObj("Button", nil, self.table.headerContainer, template)
+    self.header.__text = text
+    self.header.__h = 19
+    self.headerOwner = owner
+end
+function Column:ConstructCells(kind, template, ...) self.cellTemplate, self.cellArgs = template, { ... } end
+function Column:SetCellPadding(l, r) self.cellPadding = { l, r } end
 
 local Builder = {}
 Builder.__index = Builder
@@ -209,8 +218,14 @@ function Builder:Reset()
     for _, c in ipairs(self.columns) do if c.header then c.header:Hide() end end
     self.columns = {}
 end
+-- Like the real builder: a bare column, set up by the caller
+function Builder:AddColumn()
+    local c = setmetatable({ padding = 0, fill = 0, fixedWidth = 0, table = self }, Column)
+    table.insert(self.columns, c)
+    return c
+end
 -- header: nil for a column without one (the favourite star)
-function Builder:AddColumn(header, width, fill, padding)
+function Builder:AddTestColumn(header, width, fill, padding)
     local c = setmetatable({ padding = padding or 0 }, Column)
     if header then
         c.header = newObj("Button", nil, self.headerContainer)
@@ -282,7 +297,12 @@ local function NewItemList(parent, layout)
     list.tableBuilderLayoutDirty = true
     function list:UpdateTableBuilderLayout()
         if not self.tableBuilder then self.tableBuilder = NewTableBuilder(self.HeaderContainer) end
-        self.ScrollBox.__view = true
+        if not self.ScrollBox.__view then
+            local view = { extent = 20 }
+            function view:GetElementExtent() return self.extent end
+            function view:SetElementExtent(e) self.extent = e end
+            self.ScrollBox.__view = view
+        end
         if self.tableBuilderLayoutDirty then
             self.tableBuilder:Reset()
             self.tableBuilderLayoutFunction(self.tableBuilder)
@@ -301,10 +321,10 @@ end
 
 -- Blizzard's browse layout: Price 146, Name fills, Available 83, favourite star 29
 function BrowseLayout(tb)
-    tb:AddColumn("Price", 146, nil, 0)
-    tb:AddColumn("Name", nil, 1, 0)
-    tb:AddColumn("Available", 83, nil, 0)
-    tb:AddColumn(nil, 29, nil, 0)
+    tb:AddTestColumn("Price", 146, nil, 0)
+    tb:AddTestColumn("Name", nil, 1, 0)
+    tb:AddTestColumn("Available", 83, nil, 0)
+    tb:AddTestColumn(nil, 29, nil, 0)
 end
 
 function FakeAuctionHouse()
@@ -333,13 +353,15 @@ function FakeAuctionHouse()
     box.__callbacks = {}
     function box:RegisterCallback(event, fn, owner) self.__callbacks[event] = fn end
     f.CategoriesList.ScrollBox = box
+    f.SearchBar = newObj("Frame", nil, f)
+    f.SearchBar.FavoritesSearchButton = newObj("Button", nil, f.SearchBar)
     f.BrowseResultsFrame = newObj("Frame", nil, f)
     f.BrowseResultsFrame.ItemList = NewItemList(f.BrowseResultsFrame, BrowseLayout)
     f.ItemBuyFrame = newObj("Frame", nil, f)
     f.ItemBuyFrame.ItemList = NewItemList(f.ItemBuyFrame, function(tb)
-        tb:AddColumn("Bid", 140, nil, 0)
-        tb:AddColumn("Buyout", 140, nil, 0)
-        tb:AddColumn("Available", 40, 1, 0)
+        tb:AddTestColumn("Bid", 140, nil, 0)
+        tb:AddTestColumn("Buyout", 140, nil, 0)
+        tb:AddTestColumn(nil, 40, 1, 0)   -- quantity: fills, no header (like Blizzard's)
     end)
     -- What the game's anchors do: the lists stretch with the window and make
     -- room for the category list

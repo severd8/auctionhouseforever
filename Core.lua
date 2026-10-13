@@ -44,11 +44,12 @@ AHF.LIMITS = {
     height = { AHF.BLIZZARD_HEIGHT, 1100 },
     scale = { 0.6, 1.5 },
     sidebarWidth = { AHF.BLIZZARD_SIDEBAR, 320 },
-    rowFontSize = { 0, 14 },
+    rowFontSize = { 0, 16 },
     column = { 30, 400 },   -- a column dragged by its divider
 }
 AHF.NAME_MIN = 150          -- the Name column never gets narrower than this
-AHF.ROW_FONT_SIZES = { 0, 9, 10, 11, 12, 13, 14 }   -- the row text size choices (0 = Default)
+AHF.ROW_FONT_SIZES = { 0, 11, 12, 13, 14, 15, 16 }   -- the row text size choices (0 = Default)
+AHF.ROW_HEIGHT = 20   -- Blizzard's row height; rows grow with bigger text (RowHeight)
 
 local function Clamp(v, range)
     if v < range[1] then return range[1] end
@@ -88,7 +89,7 @@ AHF.PrepareSettings = PrepareSettings
 
 -- Per character: columns, per list. Each list keeps
 --   widths = { [column name] = width }
---   hidden = { [column name] = true }
+--   hidden = { [column name] = true / false }   (nil: the column's default)
 --   order  = { column name, ... }   (the named columns, left to right)
 local function PrepareCharSettings(db)
     if type(db.columns) ~= "table" then db.columns = {} end
@@ -104,7 +105,7 @@ local function PrepareCharSettings(db)
                 else state.widths[name] = Clamp(w, AHF.LIMITS.column) end
             end
             for name, v in pairs(state.hidden) do
-                if v ~= true or type(name) ~= "string" then state.hidden[name] = nil end
+                if type(v) ~= "boolean" or type(name) ~= "string" then state.hidden[name] = nil end
             end
             local order = {}
             for _, name in ipairs(state.order) do
@@ -174,6 +175,7 @@ function AHF:OnAuctionHouseLoaded()
     self.frame = f
     self:SetupLayout(f)
     self:SetupColumns(f)
+    self:SetupColumnsButton(f)
     self:StretchBackgrounds()
     self:ApplyLayout()
 end

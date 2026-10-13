@@ -1,3 +1,10 @@
+## 1.2.0
+
+- **Columns button** beside the search box, in the same style as Filter: tick columns on or off and move them left or right, for the list on screen.
+- **New columns** on the search results: **iLvl**, **Req** (level needed to use it), **Type** (e.g. Cloth Head; starts hidden) and **Vendor** (what a vendor pays; green when the lowest buyout is below it). On an item's auctions: **Per unit** and **Seller**. Hide, move and resize them like any column.
+- **Bigger rows**: Row text size now goes up to 16, and rows get taller with bigger text instead of squeezing it.
+- "Lock the window" is now **Keep window in place**; your position is saved either way.
+
 ## 1.1.2
 
 - Fixed: an error when changing **Row text size** before every list had been opened once.
