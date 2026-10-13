@@ -1,2 +1,4 @@
 luac.out
 *.bak
+tests/render-out.json
+tests/render-out/

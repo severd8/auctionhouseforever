@@ -8,6 +8,7 @@ local AHF = ns.AHF
 AHF.NEWS = {
     { version = "1.1.1", date = "2026-10-13", items = {
         "Fixed: taller windows show more rows, backgrounds fill the lists, and /ahf opens without an error.",
+        "Cleaner Show & order tab.",
     } },
     { version = "1.1.0", date = "2026-10-13", items = {
         "Hide, show and reorder columns: new Show & order tab in the settings (/ahf).",

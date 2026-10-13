@@ -17,7 +17,7 @@ An addon for **World of Warcraft: Forever** (interface 16001, client 1.60.x) tha
 - `News.lua` — short "What's new" lines for the splash screen, newest first. **Add an entry with every release**; its top version must match the top of `CHANGELOG.md` (a test checks this).
 - `Splash.lua` — welcome / what's new window. Shows once per new `News.lua` version (and on first install) unless turned off; `/ahf news` opens it.
 - `Media/logo.tga` — 128×128, 32-bit TGA with alpha: a gold coin and a gavel in the gold ring, the same medallion style as the other Forever addons. Used through `Theme.LOGO` everywhere. Sources in `art/` (not shipped): `icon.svg` (the medallion), `logo.svg` (the framed logo with the name on a banner) and `logo.png` (1024×1024, for the CurseForge project icon and the README). Re-export `Media/logo.tga` from `icon.svg` if the logo changes.
-- `tests/` — offline test suite (not shipped). `wowstub.lua` fakes the WoW API and the parts of the Auction House the addon touches (`FakeAuctionHouse()`, a table builder with Blizzard's width math); `run_tests.lua` holds the scenarios; `run.lua` runs them.
+- `tests/` — offline test suite (not shipped). `render.lua` / `render.py` draw the windows for a visual check. `wowstub.lua` fakes the WoW API and the parts of the Auction House the addon touches (`FakeAuctionHouse()`, a table builder with Blizzard's width math); `run_tests.lua` holds the scenarios; `run.lua` runs them.
 - `CHANGELOG.md` — release notes shown on CurseForge. Newest version at the top.
 - `CURSEFORGE.md` — the CurseForge project description, pasted by hand (not shipped).
 - `.pkgmeta` — packager config (folder name, changelog, files to leave out of the download).
@@ -59,6 +59,8 @@ Run from the repo root before every commit:
     lua5.1 tests/run.lua
 
 It loads the addon against the fake WoW API and Auction House and covers: loading before and after the Auction House, the size coming back after Blizzard resets it, the panel manager, moving, lock, the corner grip, size and scale limits, dragging dividers (limits, Name minimum, double-click), widths kept across layouts, a column from another addon (Median) and one added late, separate lists, hiding / showing / reordering columns (kept across layouts, Name never hidden, the star keeps its place), row text size, the category list, every settings control, the two-click reset, the Interface Options button, slash commands, damaged saved settings, and that nothing buys, bids or posts. Add a scenario to `tests/run_tests.lua` for any new feature.
+
+Visual check of the layout: `lua5.1 tests/render.lua out.json && python3 tests/render.py out.json outdir` draws the settings tabs and the welcome screen as PNG images (an approximation: plain colours, a wider font than the game's). Needs Python with Pillow.
 
 Things only testable in game: the real frame names on Forever's client (`/fstack` over the Auction House), how the Blizzard art looks when stretched, how bigger row text fits the rows, Auctionator's tabs at bigger sizes, and anything the panel manager does when other windows open beside the Auction House.
 

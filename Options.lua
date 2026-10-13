@@ -125,7 +125,7 @@ local function BuildColumnsTab(p)
     reset:SetScript("OnClick", function() AHF:SetSidebarWidth(AHF.BLIZZARD_SIDEBAR) end)
     TipAll(reset, "Reset", "The category list back to Blizzard's width.")
 
-    local cols = Card(p, "Columns", 0, -114, PAGE_W, 232)
+    local cols = Card(p, "Columns", 0, -114, PAGE_W, 198)
     MutedNote(cols, "Drag the line between two column headers to resize a column. Double-click it for "
         .. "the column's default width. The Name column takes the rest of the room.", 12, -30, PAGE_W - 24)
     MutedNote(cols, "Hide, show and reorder columns on the Show & order tab. Everything is saved for each "
@@ -170,28 +170,19 @@ local LIST_LABELS = {
 }
 AHF.LIST_LABELS = LIST_LABELS
 
-local ARROW = "Interface\\Buttons\\Arrow-"
-local function ArrowButton(parent, up)
-    local b = FlatButton(parent, "", 22, 18)
-    local t = b:CreateTexture(nil, "OVERLAY")
-    t:SetSize(12, 12)
-    t:SetPoint("CENTER", 0, up and -2 or 2)
-    t:SetTexture(ARROW .. (up and "Up-Up" or "Down-Up"))
-    b.arrow = t
-    T.Disabler(b, { b })
-    return b
-end
-
-local MAX_ROWS = 10
+local MAX_ROWS = 9
+local ROW_H = 28
 local function BuildOrderTab(p)
+    local C = T.C
     local card = Card(p, "Columns shown", 0, 0, PAGE_W, 380)
     local selected = "browse"
     local keys = {}
 
-    local pick = T.Dropdown(card, 260, keys, function(k) return LIST_LABELS[k] or k end,
+    T.RowLabel(card, "List", 12, -32)
+    local pick = T.Dropdown(card, 240, keys, function(k) return LIST_LABELS[k] or k end,
         function() return selected end,
         function(k) selected = k; RunRefreshers() end)
-    pick:SetPoint("TOPLEFT", 12, -30)
+    pick:SetPoint("TOPLEFT", 52, -30)
     pick.menuTitle = "List"
     TipAll(pick, "List", "Which Auction House list to set up. Each list keeps its own columns.")
 
@@ -204,35 +195,60 @@ local function BuildOrderTab(p)
     TipAll(resetList, "Show all, default order", "Shows every column of this list again, in Blizzard's "
         .. "order. Widths stay as they are.")
 
-    local empty = MutedNote(card, "Open the Auction House and look at a list once (search, or pick an item) "
-        .. "to set up its columns here.", 12, -70, PAGE_W - 24)
+    -- Table: a header line, then one striped row per column
+    local TOP, W = -66, PAGE_W - 24
+    local head = CreateFrame("Frame", nil, card)
+    head:SetPoint("TOPLEFT", 12, TOP)
+    head:SetSize(W, 18)
+    local hShown = Text(head, "SHOWN", "GameFontNormalSmall", C.orange)
+    hShown:SetPoint("LEFT", 8, 0)
+    local hName = Text(head, "COLUMN", "GameFontNormalSmall", C.orange)
+    hName:SetPoint("LEFT", 60, 0)
+    local hMove = Text(head, "MOVE", "GameFontNormalSmall", C.orange)
+    hMove:SetPoint("RIGHT", -8, 0)
+    hMove:SetJustifyH("RIGHT")
+    local line = head:CreateTexture(nil, "BORDER")
+    line:SetPoint("BOTTOMLEFT"); line:SetPoint("BOTTOMRIGHT"); line:SetHeight(1)
+    line:SetColorTexture(unpack(C.line))
 
     local rows = {}
     for i = 1, MAX_ROWS do
-        local y = -68 - (i - 1) * ROW
-        local r = {}
-        r.switch = T.LabeledSwitch(card, "", 12, y)
+        local r = CreateFrame("Frame", nil, card)
+        r:SetPoint("TOPLEFT", 12, TOP - 20 - (i - 1) * ROW_H)
+        r:SetSize(W, ROW_H)
+        if i % 2 == 0 then T.Fill(r, C.field) end
+        r.switch = T.SwitchWidget(r)
+        r.switch:SetPoint("LEFT", 10, 0)
+        T.Disabler(r.switch, { r.switch })
         r.switch:SetScript("OnClick", function(self)
             if self.disabled or not r.name then return end
             AHF:SetColumnShown(selected, r.name, not self.on)
         end)
         TipAll(r.switch, "Show this column", "Off hides the column in this list; it comes back when you "
             .. "turn it on. The Name column always shows: it takes the rest of the room.")
-        r.up = ArrowButton(card, true)
-        r.up:SetPoint("TOPRIGHT", -40, y + 1)
-        r.up:SetScript("OnClick", function(self)
-            if not self.disabled and r.name then AHF:MoveColumn(selected, r.name, -1) end
-        end)
-        TipAll(r.up, "Move left", "Moves this column one place to the left in the list.")
-        r.down = ArrowButton(card, false)
-        r.down:SetPoint("TOPRIGHT", -12, y + 1)
-        r.down:SetScript("OnClick", function(self)
+        r.label = Text(r, "", "GameFontHighlight")
+        r.label:SetPoint("LEFT", 60, 0)
+        r.note = Text(r, "", "GameFontDisableSmall")
+        r.note:SetPoint("LEFT", r.label, "RIGHT", 8, 0)
+        r.right = FlatButton(r, "Right", 54, 20)
+        r.right:SetPoint("RIGHT", -6, 0)
+        T.Disabler(r.right, { r.right })
+        r.right:SetScript("OnClick", function(self)
             if not self.disabled and r.name then AHF:MoveColumn(selected, r.name, 1) end
         end)
-        TipAll(r.down, "Move right", "Moves this column one place to the right in the list.")
+        TipAll(r.right, "Move right", "Moves this column one place to the right in the list.")
+        r.left = FlatButton(r, "Left", 54, 20)
+        r.left:SetPoint("RIGHT", r.right, "LEFT", -6, 0)
+        T.Disabler(r.left, { r.left })
+        r.left:SetScript("OnClick", function(self)
+            if not self.disabled and r.name then AHF:MoveColumn(selected, r.name, -1) end
+        end)
+        TipAll(r.left, "Move left", "Moves this column one place to the left in the list.")
         rows[i] = r
     end
-    local more = MutedNote(card, "", 12, -68 - MAX_ROWS * ROW, PAGE_W - 24)
+    local foot = MutedNote(card, "", 12, TOP - 20 - MAX_ROWS * ROW_H - 8, PAGE_W - 24)
+    local empty = MutedNote(card, "No lists yet. Open the Auction House and look at a list once (search, "
+        .. "or pick an item); its columns then show up here.", 12, TOP - 28, PAGE_W - 24)
 
     AddRefresher(function()
         local known = AHF:KnownColumnLists()
@@ -245,21 +261,30 @@ local function BuildOrderTab(p)
         resetList:SetDisabled(#keys == 0)
         local list = (#keys > 0) and AHF:ListColumns(selected) or {}
         empty:SetShown(#list == 0)
+        head:SetShown(#list > 0)
         for i, r in ipairs(rows) do
             local c = list[i]
             r.name = c and c.name
-            local shown = c and true or false
-            r.switch:SetShown(shown); r.switch.label:SetShown(shown)
-            r.up:SetShown(shown); r.down:SetShown(shown)
+            r:SetShown(c ~= nil)
             if c then
-                r.switch.label:SetText(c.name .. (c.fill and "  |cff8a8078(always shown)|r" or ""))
+                r.label:SetText(c.name)
+                r.note:SetText(c.fill and "always shown" or "")
                 r.switch:SetOn(c.shown)
                 r.switch:SetDisabled(c.fill)
-                r.up:SetDisabled(i == 1)
-                r.down:SetDisabled(i == #list)
+                r.label:SetAlpha(c.shown and 1 or 0.5)
+                r.left:SetDisabled(i == 1)
+                r.right:SetDisabled(i == #list)
             end
         end
-        more:SetText(#list > MAX_ROWS and ((#list - MAX_ROWS) .. " more columns; reorder to reach them.") or "")
+        foot:ClearAllPoints()
+        foot:SetPoint("TOPLEFT", 12, TOP - 20 - math.min(#list, MAX_ROWS) * ROW_H - 10)
+        if #list > MAX_ROWS then
+            foot:SetText((#list - MAX_ROWS) .. " more columns: move them left to reach them.")
+        elseif #list > 0 then
+            foot:SetText("Changes show in the Auction House straight away. Saved for this character.")
+        else
+            foot:SetText("")
+        end
     end)
 end
 

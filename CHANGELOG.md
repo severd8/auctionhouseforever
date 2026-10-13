@@ -3,6 +3,7 @@
 - Fixed: a taller window now makes the category list and the results list taller too, instead of leaving an empty area at the bottom.
 - Fixed: the dark background behind the results and the category list now fills them at any size.
 - Fixed: an error when opening the settings (`/ahf`).
+- Cleaner **Show & order** tab: one striped row per column with its switch and Left / Right buttons.
 
 ## 1.1.0
 

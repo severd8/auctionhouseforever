@@ -12,6 +12,7 @@ PURCHASES = {}   -- any bid, buyout, purchase or post the addon makes (must stay
 
 local ObjMT = {}
 local Methods = {}
+STUB_METHODS = Methods   -- tests/render.lua adds layout tracking
 -- Methods the addon's own widgets add (Theme.lua); a widget without them must
 -- fail here like in the game, not quietly do nothing
 local ADDON_METHODS = { SetDisabled = true, SetOn = true, SetHover = true, Refresh = true, Choose = true,
@@ -53,12 +54,13 @@ function Methods:SetText(t) self.__text = t if self.__fs then self.__fs.__text =
 function Methods:GetText() return self.__text end
 function Methods:GetStringWidth() return #(self.__text or "") * 6 end
 function Methods:GetStringHeight() return 12 end
-function Methods:GetFont() if self.__font then return unpack(self.__font) end return "Fonts\\FRIZQT__.TTF", 10, "" end
-function Methods:SetFont(f, size, flags) self.__font = { f, size, flags } end
+function Methods:GetFont() if self.__fontset then return unpack(self.__fontset) end return "Fonts\\FRIZQT__.TTF", 10, "" end
+function Methods:SetFont(f, size, flags) self.__fontset = { f, size, flags } end
 function Methods:GetChildren() local r = {} for _, c in ipairs(self.__children) do if c.__kind ~= "Texture" and c.__kind ~= "FontString" then r[#r + 1] = c end end return unpack(r) end
 function Methods:GetRegions() local r = {} for _, c in ipairs(self.__children) do if c.__kind == "Texture" or c.__kind == "FontString" then r[#r + 1] = c end end return unpack(r) end
 function Methods:GetObjectType() return self.__kind end
 function Methods:GetName() return self.__name end
+function Methods:GetParent() return self.__parent end
 function Methods:SetFontString(fs) self.__fs = fs end
 function Methods:GetFontString() return self.__fs end
 function Methods:SetTexture(t) self.__texture = t end
