@@ -1,0 +1,42 @@
+# Builds the addon and uploads it to CurseForge whenever a version tag (like v1.0.1) is pushed.
+# The tests run first; if they fail, nothing is uploaded.
+# Needs one repository secret: CF_API_KEY (your CurseForge API token).
+# Tags containing "beta" or "alpha" (e.g. v1.1.0-beta1) upload as Beta/Alpha files.
+name: Package and release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # lets the packager also create a GitHub release
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # full history, so the packager can find tags and build a changelog
+
+      # Stops here (red X, nothing uploaded) until the .toc has the CurseForge project ID
+      - name: Check the CurseForge project ID
+        run: |
+          if ! grep -Eq '^## X-Curse-Project-ID: [0-9]+' AuctionHouseForever.toc; then
+            echo "::error::Add '## X-Curse-Project-ID: <id>' to AuctionHouseForever.toc (see DEVNOTES.md)."
+            exit 1
+          fi
+
+      - uses: BigWigsMods/packager@v2
+        with:
+          # File name stays the default (AuctionHouseForever-v1.0.0-forever.zip);
+          # the name shown on CurseForge becomes e.g. "auctionhouse-v1.0.0-forever".
+          args: -n ":auctionhouse-{project-version}{classic}{nolib}"

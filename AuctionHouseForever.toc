@@ -1,0 +1,20 @@
+## Interface: 16001
+## Title: AuctionHouse Forever
+## Notes: Resize, move and scale the Auction House, and drag its columns and category list wider.
+## Author: severd8
+## Version: @project-version@
+## IconTexture: Interface\AddOns\AuctionHouseForever\Media\logo
+## SavedVariables: AuctionHouseForeverDB
+## SavedVariablesPerCharacter: AuctionHouseForeverCharDB
+## X-License: MIT
+# CurseForge project ID: replace the next line with  ## X-Curse-Project-ID: <your project ID>
+# X-Curse-Project-ID: TBD
+## X-Category: Auction & Economy
+
+Theme.lua
+Core.lua
+Layout.lua
+Columns.lua
+News.lua
+Options.lua
+Splash.lua

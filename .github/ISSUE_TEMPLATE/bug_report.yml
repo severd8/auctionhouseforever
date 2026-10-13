@@ -1,0 +1,57 @@
+name: Bug report
+description: Something in AuctionHouse Forever isn't working
+title: "[Bug] "
+labels: ["bug"]
+assignees: ["severd8"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! The more detail you give, the faster it gets fixed.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can it be reproduced?
+      description: The steps that lead to the problem.
+      placeholder: |
+        1. Opened the Auction House
+        2. Dragged the corner grip to make it bigger
+        3. Switched to the Sell tab
+        4. ...
+  - type: dropdown
+    id: tab
+    attributes:
+      label: Which Auction House tab were you on?
+      options: [Buy (browse), Buying an item, Sell, Auctions, An Auctionator tab, Other / not sure]
+    validations:
+      required: true
+  - type: dropdown
+    id: auctionator
+    attributes:
+      label: Do you use Auctionator?
+      options: ["Yes", "No"]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Addon version
+      description: Shown in your AddOns list, or at the top of the settings window (/ahf).
+      placeholder: v1.0.0
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: If a Lua error appeared, paste the full text here. The error display (or an addon like BugSack) shows it.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, other addons you use, etc.

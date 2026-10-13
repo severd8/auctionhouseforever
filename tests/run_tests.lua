@@ -1,0 +1,401 @@
+-- Test scenarios for AuctionHouse Forever. Run via tests/run.lua (see DEVNOTES.md).
+-- Drives the addon through its features against a fake Auction House. Any Lua
+-- error aborts with a traceback.
+local ADDON = "AuctionHouseForever"
+local ns = {}
+local SOURCES = {}
+local function load_file(path)
+    local f = assert(io.open(path)) local src = f:read("*a") f:close()
+    SOURCES[path] = src
+    local chunk = assert(loadstring(src, "@" .. path))
+    chunk(ADDON, ns)
+end
+-- Load files in the same order as the .toc
+local tocFile = assert(io.open(ADDON_DIR .. "/" .. ADDON .. ".toc"))
+local toc = tocFile:read("*a")
+tocFile:close()
+for line in toc:gmatch("[^\n]+") do
+    local file = line:match("^([%w_/]+%.lua)%s*$")
+    if file then load_file(ADDON_DIR .. "/" .. file) end
+end
+local AHF = ns.AHF
+
+local function fire(event, ...)
+    for _, f in ipairs(ALL_FRAMES) do
+        if f.__events and f.__events[event] and f.__scripts.OnEvent then f.__scripts.OnEvent(f, event, ...) end
+    end
+end
+local function step(name) print("STEP " .. name) end
+local function assertEq(a, b, msg) if a ~= b then error(("ASSERT %s: got %s expected %s"):format(msg, tostring(a), tostring(b)), 2) end end
+local function near(a, b, msg) if type(a) ~= "number" or math.abs(a - b) > 0.01 then error(("ASSERT %s: got %s expected %s"):format(msg, tostring(a), tostring(b)), 2) end end
+
+step("toc")
+assert(toc:find("## Interface: 16001", 1, true), "interface version")
+assert(toc:find("## Author: severd8", 1, true), "author")
+assert(toc:find("## SavedVariables: AuctionHouseForeverDB", 1, true), "saved variables")
+assert(toc:find("## SavedVariablesPerCharacter: AuctionHouseForeverCharDB", 1, true), "per character saved variables")
+assertEq(ns.Theme.NAME, "AuctionHouse Forever", "brand name")
+assertEq(ns.Theme.LOGO, "Interface\\AddOns\\AuctionHouseForever\\Media\\logo", "logo path")
+
+step("load + login without the Auction House")
+fire("ADDON_LOADED", ADDON)
+assert(AHF.db and AHF.charDB, "settings ready")
+assertEq(AHF.db.width, 1000, "default width")
+assertEq(AHF.db.height, 620, "default height")
+assertEq(AHF.db.scale, 1, "default scale")
+assertEq(AHF.db.locked, false, "unlocked by default")
+assertEq(AHF.db.sidebarWidth, 168, "Blizzard's sidebar width")
+assertEq(AHF.db.point, nil, "Blizzard's position")
+fire("PLAYER_LOGIN")
+assertEq(AHF.frame, nil, "nothing to set up yet")
+assertEq(#SETTINGS_CATEGORIES, 1, "Interface Options entry")
+assertEq(SETTINGS_CATEGORIES[1].name, "AuctionHouse Forever", "entry name")
+RunTimers()
+assert(AuctionHouseForeverSplash and AuctionHouseForeverSplash:IsShown(), "welcome screen on first install")
+assertEq(AHF.db.lastSeenVersion, AHF.NEWS[1].version, "welcome screen seen")
+AuctionHouseForeverSplash:Hide()
+
+step("Auction House loads")
+local f = FakeAuctionHouse()
+AH_LOADED = true
+fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")
+assertEq(AHF.frame, f, "set up")
+assert(AHF.grip and AHF.mover, "grip and title bar handle")
+assertEq(f:GetWidth(), 1000, "saved width")
+assertEq(f:GetHeight(), 620, "saved height")
+assertEq(f.__bounds[1], 800, "min width")
+assertEq(f.__bounds[2], 538, "min height")
+assertEq(f.__bounds[3], 1600, "max width")
+assertEq(f.__bounds[4], 1080, "max height: the screen")
+AHF:OnAuctionHouseLoaded()   -- a second call (login) changes nothing
+assertEq(#AHF.columnEntries, 2, "both fake lists found, once")
+
+step("open: columns spread over the width")
+f:Open()
+local list = f.BrowseResultsFrame.ItemList
+local tb = list.tableBuilder
+assertEq(list.ScrollBox:GetWidth(), 1000 - 168 - 40, "list stretched")
+assertEq(tb:Width("Price"), 146, "Blizzard's Price width")
+assertEq(tb:Width("Available"), 83, "Blizzard's Available width")
+near(tb:Width("Name"), 792 - 146 - 83 - 29, "Name takes the rest")
+assertEq(f:GetPoint(1), "TOPLEFT", "Blizzard's position kept")
+assertEq(select(4, f:GetPoint(1)), 20, "Blizzard's x")
+
+step("Blizzard puts its own size back")
+f:SetDisplayMode("Sell")
+assertEq(f:GetWidth(), 1000, "width back after a tab switch")
+assertEq(f:GetHeight(), 620, "height back after a tab switch")
+f:SetWidth(700)
+assertEq(f:GetWidth(), 1000, "SetWidth undone")
+f:SetScale(0.8)
+assertEq(f:GetScale(), 1, "SetScale undone")
+
+step("move by the title bar")
+assertEq(AHF.mover.__mouse, true, "title bar takes the mouse while unlocked")
+f.__left, f.__top = 300, 800
+AHF.mover.__scripts.OnDragStart(AHF.mover)
+assert(f.__moving, "moving")
+AHF.mover.__scripts.OnDragStop(AHF.mover)
+assertEq(f.__moving, nil, "stopped")
+assertEq(AHF.db.point[1], "TOPLEFT", "saved point")
+assertEq(AHF.db.point[3], 300, "saved x")
+assertEq(AHF.db.point[4], 800, "saved y")
+UpdateUIPanelPositions()
+local p, rel, rp, x, y = f:GetPoint(1)
+assertEq(f:GetNumPoints(), 1, "one anchor")
+assertEq(p .. rp .. x .. y, "TOPLEFTBOTTOMLEFT300800", "saved position wins over the panel manager")
+assertEq(rel, UIParent, "anchored to the screen")
+f:Hide(); f:Open()
+assertEq(select(4, f:GetPoint(1)), 300, "saved position after reopening")
+
+step("lock")
+SlashCmdList.AUCTIONHOUSEFOREVER("lock")
+assertEq(AHF.db.locked, true, "locked")
+assertEq(AHF.mover.__mouse, false, "title bar lets clicks through when locked")
+SlashCmdList.AUCTIONHOUSEFOREVER("unlock")
+assertEq(AHF.mover.__mouse, true, "unlocked")
+
+step("resize with the corner grip")
+AHF.grip.__scripts.OnMouseDown(AHF.grip, "LeftButton")
+assertEq(f.__sizing, "BOTTOMRIGHT", "sizing from the corner")
+-- What the game does while dragging: resizes without calling SetSize
+local ow, oh = f.__w, f.__h
+f.__w, f.__h = 1200, 700
+f.__scripts.OnSizeChanged(f, 1200, 700)
+AHF.grip.__scripts.OnMouseUp(AHF.grip, "LeftButton")
+assertEq(AHF.db.width, 1200, "saved width")
+assertEq(AHF.db.height, 700, "saved height")
+near(tb:Width("Name"), (1200 - 208) - 146 - 83 - 29, "Name grows with the window")
+assertEq(tb:Width("Price"), 146, "fixed columns keep their width")
+AHF:SetSize(5000, 100)
+assertEq(AHF.db.width, 1600, "width limit")
+assertEq(AHF.db.height, 538, "height limit")
+AHF:SetSize(1200, 700)
+
+step("scale")
+AHF:SetScale(1.25)
+assertEq(f:GetScale(), 1.25, "scaled")
+near(AHF.db.point[3], 240, "top left stays put on screen (x)")
+near(AHF.db.point[4], 640, "top left stays put on screen (y)")
+AHF:SetSize(1600, 1100)
+assertEq(f:GetWidth(), 1536, "never wider than the screen")
+assertEq(f:GetHeight(), 864, "never taller than the screen")
+AHF:SetScale(1)
+AHF:SetSize(1200, 700)
+AHF:SetScale(9)
+assertEq(AHF.db.scale, 1.5, "scale limit")
+AHF:SetScale(1)
+
+step("drag a column divider")
+local entry = AHF.columnEntries[1]
+assertEq(entry.key, "browse", "browse list first")
+local grips = {}
+for _, g in ipairs(entry.grips) do if g.__shown then grips[#grips + 1] = g end end
+assertEq(#grips, 2, "a divider after Price and after Name")
+assertEq(grips[1].colName, "Price", "first divider resizes Price")
+assertEq(grips[1].sign, 1, "Price grows to the right")
+assertEq(grips[2].colName, "Available", "second divider resizes Available")
+assertEq(grips[2].sign, -1, "Available grows to the left")
+local function drag(g, dx)
+    CURSOR_X = 500
+    g.__scripts.OnMouseDown(g, "LeftButton")
+    CURSOR_X = 500 + dx
+    g.__scripts.OnUpdate(g, 0.01)
+    g.__scripts.OnMouseUp(g, "LeftButton")
+    assertEq(g.__scripts.OnUpdate, nil, "drag ends on mouse up")
+end
+drag(grips[1], 60)
+assertEq(tb:Width("Price"), 206, "Price wider")
+assertEq(AHF.charDB.columns.browse.widths.Price, 206, "saved per character")
+drag(grips[2], -40)
+assertEq(tb:Width("Available"), 123, "Available wider")
+near(tb:Width("Name"), 992 - 206 - 123 - 29, "Name gives the room")
+drag(grips[1], 2000)
+assertEq(tb:Width("Price"), AHF.LIMITS.column[2], "column maximum")
+drag(grips[1], -(400 - 206))
+AHF:SetSize(800, 700)
+drag(grips[1], 2000)
+near(tb:Width("Name"), AHF.NAME_MIN, "Name never narrower than the minimum")
+AHF:SetSize(1200, 700)
+drag(grips[1], -2000)
+assertEq(tb:Width("Price"), AHF.LIMITS.column[1], "column minimum")
+drag(grips[1], 60 + 146 - 30)
+assertEq(tb:Width("Price"), 206, "back to 206")
+
+step("widths survive a new layout")
+list:SetTableBuilderLayout(BrowseLayout)   -- what choosing a category does
+tb = list.tableBuilder
+assertEq(tb:Width("Price"), 206, "saved Price width put back")
+assertEq(tb:Width("Available"), 123, "saved Available width put back")
+assertEq(AHF:DefaultColumnWidth("browse", "Price"), 146, "Blizzard's width remembered")
+
+step("a column from another addon (Median)")
+local function WithMedian(t)
+    BrowseLayout(t)
+    table.insert(t.columns, 3, (function()
+        local c = t:AddColumn("Median", 120, nil, 0)
+        table.remove(t.columns)   -- AddColumn appended it; it goes after Name
+        return c
+    end)())
+end
+list:SetTableBuilderLayout(WithMedian)
+tb = list.tableBuilder
+assertEq(#tb.columns, 5, "Median kept")
+assertEq(tb:Width("Median"), 120, "its own width")
+grips = {}
+for _, g in ipairs(entry.grips) do if g.__shown then grips[#grips + 1] = g end end
+assertEq(#grips, 3, "three dividers")
+assertEq(grips[2].colName, "Median", "Name | Median resizes Median")
+assertEq(grips[3].colName, "Available", "Median | Available resizes Available")
+drag(grips[2], -30)
+assertEq(AHF.charDB.columns.browse.widths.Median, 150, "Median width saved")
+list:SetTableBuilderLayout(WithMedian)
+assertEq(list.tableBuilder:Width("Median"), 150, "Median width put back")
+-- An addon adding its column right after Blizzard's layout, outside the layout
+hooksecurefunc(list, "UpdateTableBuilderLayout", function(self)
+    local t = self.tableBuilder
+    if not t:Column("Late") then t:AddColumn("Late", 50, nil, 0); t:Arrange() end
+end)
+AHF.charDB.columns.browse.widths.Late = 70
+list:SetTableBuilderLayout(BrowseLayout)
+assertEq(list.tableBuilder:Width("Late"), 50, "late column has the addon's width at first")
+RunTimers()
+assertEq(list.tableBuilder:Width("Late"), 70, "and its saved width a frame later")
+assertEq(AHF:DefaultColumnWidth("browse", "Late"), 50, "its own default remembered")
+AHF.charDB.columns.browse.widths.Late = nil
+list:SetTableBuilderLayout(BrowseLayout)
+RunTimers()
+tb = list.tableBuilder
+
+step("narrow window: Name keeps its minimum, saved widths stay")
+AHF.charDB.columns.browse.widths.Price = 400
+AHF:SetSize(800, 600)
+near(tb:Width("Name"), AHF.NAME_MIN, "Name keeps its minimum")
+assertEq(AHF.charDB.columns.browse.widths.Price, 400, "saved width unchanged")
+AHF:SetSize(1200, 700)
+assertEq(tb:Width("Price"), 400, "saved width back with room")
+AHF.charDB.columns.browse.widths.Price = 206
+
+step("double-click a divider")
+grips = {}
+for _, g in ipairs(entry.grips) do if g.__shown then grips[#grips + 1] = g end end
+grips[1].__scripts.OnDoubleClick(grips[1])
+assertEq(tb:Width("Price"), 146, "Price back to its default")
+assertEq(AHF.charDB.columns.browse.widths.Price, nil, "no longer saved")
+
+step("other lists keep their own widths")
+local buy = f.ItemBuyFrame.ItemList
+buy:UpdateTableBuilderLayout()
+assertEq(buy.tableBuilder:Width("Bid"), 140, "Bid default")
+local buyEntry = AHF.columnEntries[2]
+assertEq(buyEntry.key, "itemBuy", "item buy list")
+for _, g in ipairs(buyEntry.grips) do
+    if g.__shown and g.colName == "Bid" then drag(g, 20) end
+end
+assertEq(buy.tableBuilder:Width("Bid"), 160, "Bid wider")
+assertEq(AHF.charDB.columns.itemBuy.widths.Bid, 160, "saved for that list")
+assertEq(AHF.charDB.columns.browse.widths.Bid, nil, "not for the browse list")
+
+step("category list width")
+AHF:SetSidebarWidth(250)
+local cat = f.CategoriesList
+assertEq(cat:GetWidth(), 250, "wider category list")
+assertEq(cat.Background:GetWidth(), 162 + 82, "its background stretched")
+assertEq(list.ScrollBox:GetWidth(), 1200 - 250 - 40, "results list makes room")
+local btn = cat.ScrollBox.__buttons[1]
+assertEq(btn.NormalTexture:GetNumPoints(), 2, "button art anchored both sides")
+btn.__w = 214
+cat.ScrollBox.__callbacks.OnLayout()
+assertEq(btn.HighlightTexture:GetWidth(), 130 + 82, "highlight stretched with the button")
+AHF:SetSidebarWidth(1000)
+assertEq(AHF.db.sidebarWidth, 320, "sidebar limit")
+AHF:SetSidebarWidth(168)
+assertEq(cat.Background:GetWidth(), 162, "background back")
+
+step("settings window")
+AHF:ToggleConfig()
+local win = AHF.configWindow
+assert(win and win:IsShown(), "window open")
+assert(#AHF.optionTips >= 9, "controls registered")
+for _, t in ipairs(AHF.optionTips) do
+    assert(t.title and t.body and #t.body > 10, "every control has hover help: " .. tostring(t.title))
+end
+-- Every page builds and shows
+for _, key in ipairs({ "window", "columns", "general" }) do
+    win:ShowTab(key)
+    assertEq(win.currentTab, key, "tab " .. key)
+end
+local function findTip(title)
+    for _, t in ipairs(AHF.optionTips) do if t.title == title then return t.widget end end
+    error("no control " .. title)
+end
+local lockSwitch = findTip("Lock the window")
+lockSwitch.__scripts.OnClick(lockSwitch)
+assertEq(AHF.db.locked, true, "switch locks")
+lockSwitch.__scripts.OnClick(lockSwitch)
+assertEq(AHF.db.locked, false, "and unlocks")
+findTip("Width"):SetValue(1300)
+assertEq(AHF.db.width, 1300, "width slider")
+assertEq(f:GetWidth(), 1300, "applied at once")
+findTip("Scale"):SetValue(120)
+near(AHF.db.scale, 1.2, "scale slider in %")
+findTip("Scale"):SetValue(100)
+findTip("Category list width"):SetValue(200)
+assertEq(cat:GetWidth(), 200, "sidebar slider")
+local resetCols = findTip("Reset column widths")
+resetCols.__scripts.OnClick(resetCols)
+assertEq(AHF:SavedColumnCount(), 0, "column widths reset")
+assertEq(buy.tableBuilder:Width("Bid"), 140, "Bid back to default")
+local splashSwitch = findTip("Show welcome screen after updates")
+splashSwitch.__scripts.OnClick(splashSwitch)
+assertEq(AHF.db.showSplash, false, "welcome screen off")
+splashSwitch.__scripts.OnClick(splashSwitch)
+
+step("reset to default needs two clicks")
+AHF.charDB.columns.browse.widths.Price = 300
+local resetAll = findTip("Reset to default")
+resetAll.__scripts.OnClick(resetAll)
+assertEq(AHF.db.width, 1300, "first click only asks")
+assertEq(resetAll:GetFontString():GetText(), "Click again to reset", "asks to confirm")
+resetAll.__scripts.OnClick(resetAll)
+assertEq(AHF.db.width, 1000, "width default")
+assertEq(AHF.db.height, 620, "height default")
+assertEq(AHF.db.sidebarWidth, 168, "sidebar default")
+assertEq(AHF.db.point, nil, "position default")
+assertEq(AHF.db.showSplash, true, "welcome screen setting kept")
+assertEq(AHF:SavedColumnCount(), 0, "columns default")
+assertEq(f:GetWidth(), 1000, "window resized")
+assertEq(select(4, f:GetPoint(1)), 20, "back where Blizzard put it")
+-- The confirmation runs out
+resetAll.__scripts.OnClick(resetAll)
+RunTimers()
+assertEq(resetAll:GetFontString():GetText(), "Reset to default", "confirmation expires")
+AHF:ToggleConfig()
+assertEq(win:IsShown(), false, "toggles closed")
+
+step("Interface Options button")
+local panel = AHF.settingsPanel
+local openBtn
+for _, c in ipairs(panel.__children) do if c.__fs and c.__fs.__text == "Open settings" then openBtn = c end end
+assert(openBtn, "open button")
+openBtn.__scripts.OnClick(openBtn)
+assert(win:IsShown(), "opens the window")
+assertEq(win.currentTab, "window", "on the Window tab")
+win:Hide()
+
+step("slash commands")
+AHF:SetSize(1400, 900)
+AHF.db.point = { "TOPLEFT", "BOTTOMLEFT", 5, 5 }
+f:Hide(); f:Open()
+assertEq(select(4, f:GetPoint(1)), 5, "dragged position")
+SlashCmdList.AUCTIONHOUSEFOREVER("reset")
+assertEq(AHF.db.width, 1000, "/ahf reset size")
+assertEq(AHF.db.point, nil, "/ahf reset position")
+assertEq(select(4, f:GetPoint(1)), 20, "moved back at once")
+AHF.charDB.columns.browse.widths.Price = 250
+SlashCmdList.AUCTIONHOUSEFOREVER("columns")
+assertEq(AHF:SavedColumnCount(), 0, "/ahf columns")
+SlashCmdList.AUCTIONHOUSEFOREVER("news")
+assert(AuctionHouseForeverSplash:IsShown(), "/ahf news")
+SlashCmdList.AUCTIONHOUSEFOREVER("news")
+SlashCmdList.AUCTIONHOUSEFOREVER("")
+assert(win:IsShown(), "/ahf opens settings")
+SlashCmdList.AUCTIONHOUSEFOREVER("")
+SlashCmdList.AUCTIONHOUSEFOREVER("help")
+local helped = false
+for _, l in ipairs(LOG) do if l:find("/ahf columns") then helped = true end end
+assert(helped, "help lists the commands")
+
+step("damaged saved settings")
+local db = AHF.PrepareSettings({ width = "wide", height = 99999, scale = 0.1, locked = "yes",
+    point = { 1, 2 }, sidebarWidth = 10 })
+assertEq(db.width, 1000, "wrong type back to default")
+assertEq(db.height, 1100, "too tall brought inside the limit")
+assertEq(db.scale, 0.6, "scale limit")
+assertEq(db.locked, false, "wrong type")
+assertEq(db.point, nil, "broken position dropped")
+assertEq(db.sidebarWidth, 168, "sidebar limit")
+local okPoint = AHF.PrepareSettings({ point = { "TOPLEFT", "BOTTOMLEFT", 10, 20 } })
+assertEq(okPoint.point[3], 10, "good position kept")
+local char = AHF.PrepareCharSettings({ columns = { browse = { widths = { Price = "x", Name = 9999 } }, bad = 5 } })
+assertEq(char.columns.bad, nil, "broken list dropped")
+assertEq(char.columns.browse.widths.Price, nil, "broken width dropped")
+assertEq(char.columns.browse.widths.Name, 400, "width limit")
+assert(type(char.columns.browse.hidden) == "table" and type(char.columns.browse.order) == "table", "v1.1 fields ready")
+
+step("never buys, bids or posts")
+assertEq(#PURCHASES, 0, "no auction actions")
+for path, src in pairs(SOURCES) do
+    assert(not src:find("C_AuctionHouse", 1, true), path .. " must not call C_AuctionHouse")
+    for _, fn in ipairs({ "PlaceBid", "Purchase", "PostItem", "PostCommodity", "CancelAuction", "StartItemBuyout",
+            "StartItemBid", "BuyDialog" }) do
+        assert(not src:find(fn, 1, true), path .. " must not touch " .. fn)
+    end
+end
+
+step("news matches the changelog")
+local cl = assert(io.open(ADDON_DIR .. "/CHANGELOG.md")):read("*a")
+local top = cl:match("\n## ([%d%.]+)") or cl:match("^## ([%d%.]+)")
+assertEq(AHF.NEWS[1].version, top, "News.lua top version = CHANGELOG.md top version")
+
+print("ALL TESTS PASSED")
