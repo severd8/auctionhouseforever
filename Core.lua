@@ -46,7 +46,6 @@ AHF.LIMITS = {
     scale = { 0.6, 1.5 },
     sidebarWidth = { AHF.BLIZZARD_SIDEBAR, 320 },
     rowTextScale = { 100, 200 },
-    categoryTextScale = { 100, 150 },
     column = { 30, 400 },   -- a column dragged by its divider
 }
 AHF.NAME_MIN = 150          -- the Name column never gets narrower than this
