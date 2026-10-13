@@ -33,8 +33,8 @@ AHF.DEFAULTS = {
     scale = 1,
     locked = false,
     sidebarWidth = AHF.BLIZZARD_SIDEBAR,
-    rowFontSize = 0,       -- text size in the lists' rows; 0 = the game's own
-    categoryFontSize = 0,  -- text size in the category list; 0 = the game's own
+    rowTextScale = 100,       -- text size in the lists' rows, % of the game's own
+    categoryTextScale = 100,  -- text size in the category list, % of the game's own
     showSplash = true,
     lastSeenVersion = "",
 }
@@ -45,15 +45,20 @@ AHF.LIMITS = {
     height = { AHF.BLIZZARD_HEIGHT, 1100 },
     scale = { 0.6, 1.5 },
     sidebarWidth = { AHF.BLIZZARD_SIDEBAR, 320 },
-    rowFontSize = { 0, 20 },
-    categoryFontSize = { 0, 18 },
+    rowTextScale = { 100, 200 },
+    categoryTextScale = { 100, 200 },
     column = { 30, 400 },   -- a column dragged by its divider
 }
 AHF.NAME_MIN = 150          -- the Name column never gets narrower than this
-AHF.ROW_FONT_SIZES = { 0, 12, 13, 14, 15, 16, 18, 20 }   -- the row text size choices (0 = Default)
-AHF.CATEGORY_FONT_SIZES = { 0, 12, 13, 14, 15, 16, 18 }   -- the category text size choices
+AHF.TEXT_SCALES = { 100, 110, 125, 150, 175, 200 }   -- the text size choices, % of the game's own
 AHF.CATEGORY_HEIGHT = 21   -- Blizzard's category button height
 AHF.ROW_HEIGHT = 20   -- Blizzard's row height; rows grow with bigger text (RowHeight)
+
+-- Is v one of the text size choices?
+function AHF.ValidTextScale(v)
+    for _, s in ipairs(AHF.TEXT_SCALES) do if s == v then return true end end
+    return false
+end
 
 local function Clamp(v, range)
     if v < range[1] then return range[1] end
@@ -97,11 +102,12 @@ local function PrepareSettings(db)
         if type(db[k]) == "number" then db[k] = Clamp(db[k], range) end
     end
     if db.point ~= nil and not ValidPoint(db.point) then db.point = nil end
-    for key, list in pairs({ rowFontSize = AHF.ROW_FONT_SIZES, categoryFontSize = AHF.CATEGORY_FONT_SIZES }) do
+    for _, key in ipairs({ "rowTextScale", "categoryTextScale" }) do
         local ok = false
-        for _, v in ipairs(list) do if v == db[key] then ok = true end end
-        if not ok then db[key] = 0 end
+        for _, v in ipairs(AHF.TEXT_SCALES) do if v == db[key] then ok = true end end
+        if not ok then db[key] = 100 end
     end
+    db.rowFontSize, db.categoryFontSize = nil, nil   -- 1.2.x point sizes, replaced by percentages
     db.schema = AHF.SCHEMA
     return db
 end

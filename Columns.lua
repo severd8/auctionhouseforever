@@ -326,7 +326,7 @@ end
 ---------------------------------------------------------------------------
 local fontBase = setmetatable({}, { __mode = "k" })   -- font strings changed, and their own font
 
-local function SetRowFonts(frame, size, depth)
+local function SetRowFonts(frame, scale, depth)
     for _, r in ipairs({ frame:GetRegions() }) do
         if r.GetObjectType and r:GetObjectType() == "FontString" and r.SetFont then
             if not fontBase[r] then
@@ -334,41 +334,36 @@ local function SetRowFonts(frame, size, depth)
                 if font then fontBase[r] = { font, base, flags } end
             end
             local b = fontBase[r]
-            if b then r:SetFont(b[1], size, b[3]) end
+            if b then r:SetFont(b[1], b[2] * scale, b[3]) end
         end
     end
     if depth > 0 and frame.GetChildren then
-        for _, child in ipairs({ frame:GetChildren() }) do SetRowFonts(child, size, depth - 1) end
+        for _, child in ipairs({ frame:GetChildren() }) do SetRowFonts(child, scale, depth - 1) end
     end
 end
 
 -- Row height for the text size: Blizzard's 20 at Default, taller for big text
 function AHF:RowHeight()
-    local size = self.db.rowFontSize
-    if size == 0 then return self.ROW_HEIGHT end
-    return math.max(self.ROW_HEIGHT, size + 10)
+    return math.floor(self.ROW_HEIGHT * self.db.rowTextScale / 100 + 0.5)
 end
 
--- The list's rows (and the scroll range, via the view's row extent) at the
--- current row height. A new row gets it as it's handed out (OnAcquiredFrame),
--- before Blizzard lays its cells out.
 local function ApplyRowHeight(entry)
     AHF.SetBoxRowHeight(entry.list.ScrollBox, AHF:RowHeight(), AHF.ROW_HEIGHT)
 end
 
 local function ApplyRowFonts(entry)
-    local size = AHF.db.rowFontSize
+    local scale = AHF.db.rowTextScale / 100
     local box = entry.list.ScrollBox
     if not AHF.HasRows(box) then return end
     ApplyRowHeight(entry)
-    if size == 0 then return end
-    box:ForEachFrame(function(row) SetRowFonts(row, size, 3) end)
+    if scale == 1 then return end
+    box:ForEachFrame(function(row) SetRowFonts(row, scale, 3) end)
 end
 
 -- After a change of the setting: every list's rows, and back to the game's own
 -- font (pooled cells included) at Default
 function AHF:ApplyRowFonts()
-    if self.db.rowFontSize == 0 then
+    if self.db.rowTextScale == 100 then
         for fs, b in pairs(fontBase) do fs:SetFont(b[1], b[2], b[3]) end
         fontBase = setmetatable({}, { __mode = "k" })
     end
@@ -379,10 +374,8 @@ function AHF:ApplyRowFonts()
     end
 end
 
-function AHF:SetRowFontSize(size)
-    local ok = false
-    for _, v in ipairs(self.ROW_FONT_SIZES) do if v == size then ok = true end end
-    self.db.rowFontSize = ok and size or 0
+function AHF:SetRowTextScale(v)
+    self.db.rowTextScale = self.ValidTextScale(v) and v or 100
     self:ApplyRowFonts()
     self:RefreshOptions()
 end

@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.2.3", date = "2026-10-13", items = {
+        "Category buttons stretch to the list's width. Text sizes are now 110% to 200% of the game's.",
+    } },
     { version = "1.2.2", date = "2026-10-13", items = {
         "Fixed: an error when moving the mouse over the search results, and the Columns button's name.",
         "Category text size, and row text up to 20 (Columns tab).",

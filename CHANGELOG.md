@@ -1,3 +1,8 @@
+## 1.2.3
+
+- Fixed: the category buttons' artwork now stretches to the full width of a wider category list.
+- Row and category text sizes are now percentages of the game's own size (Default, 110% to 200%), so Default really is the game's size. Your 1.2 text sizes go back to Default.
+
 ## 1.2.2
 
 - Fixed: an error when moving the mouse over the search results in 1.2.0 and 1.2.1.

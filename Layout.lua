@@ -147,68 +147,53 @@ end
 ---------------------------------------------------------------------------
 -- Stretches a category button's artwork with the button (the textures have
 -- fixed sizes in Blizzard's template; the text is already anchored both sides)
--- Category text size and button height (taller for bigger text)
+-- Category text size and button height, as a % of the game's own
 function AHF:CategoryHeight()
-    local size = self.db.categoryFontSize
-    if size == 0 then return self.CATEGORY_HEIGHT end
-    return math.max(self.CATEGORY_HEIGHT, size + 9)
+    return math.floor(self.CATEGORY_HEIGHT * self.db.categoryTextScale / 100 + 0.5)
 end
 
-local catFont = setmetatable({}, { __mode = "k" })   -- category font strings changed, and their own font
-
--- Stretches a category button's artwork with the button (the textures have
--- fixed sizes in Blizzard's template; the text is already anchored both sides)
--- and gives it the category text size
-local function StretchCategoryButton(btn)
-    local normal, highlight = btn.NormalTexture, btn.HighlightTexture
-    if not touched[btn] then
-        touched[btn] = { highlightW = highlight and highlight:GetWidth() or 0, btnW = btn:GetWidth() or 0,
-            highlightH = highlight and highlight:GetHeight() or 0, normalH = normal and normal:GetHeight() or 0,
-            btnH = AHF.CATEGORY_HEIGHT }
-        if normal then
-            normal:ClearAllPoints()
-            normal:SetPoint("TOPLEFT", btn, "TOPLEFT", -2, 0)
-            normal:SetPoint("TOPRIGHT", btn, "TOPRIGHT", 2, 0)
-        end
-    end
-    local base = touched[btn]
-    local h = AHF:CategoryHeight()
+-- Blizzard sets each category button up again (fixed texture sizes, its font)
+-- every time the list is drawn: AuctionHouseFilterButton_SetUp. Right after
+-- it, the art is widened to the list's width and made taller with the text.
+function AHF:FitCategoryButton(btn)
+    if type(btn) ~= "table" or not btn.SetHeight then return end
+    local dw = self.db.sidebarWidth - self.BLIZZARD_SIDEBAR
+    local scale = self.db.categoryTextScale / 100
+    local h = self:CategoryHeight()
+    local dh = h - self.CATEGORY_HEIGHT
+    if dw == 0 and dh == 0 and scale == 1 then return end
     if (btn:GetHeight() or 0) ~= h then btn:SetHeight(h) end
-    local extra = h - base.btnH
-    if normal and base.normalH > 0 then normal:SetHeight(base.normalH + extra) end
-    if highlight and base.highlightW > 0 then
-        local w = base.highlightW + (btn:GetWidth() or base.btnW) - base.btnW
-        if w > 0 then highlight:SetWidth(w) end
-        if base.highlightH > 0 then highlight:SetHeight(base.highlightH + extra) end
+    for _, key in ipairs({ "NormalTexture", "SelectedTexture", "HighlightTexture" }) do
+        local tex = btn[key]
+        if type(tex) == "table" and tex.GetSize then
+            local w, th = tex:GetSize()
+            if (w or 0) > 0 then tex:SetSize(w + dw, (th or 0) + dh) end
+        end
     end
     local text = type(btn.Text) == "table" and btn.Text or nil
-    if text and text.SetFont then
-        local size = AHF.db.categoryFontSize
-        if not catFont[text] then
-            local font, fsize, flags = text:GetFont()
-            if font then catFont[text] = { font, fsize, flags } end
-        end
-        local b = catFont[text]
-        if b then text:SetFont(b[1], size == 0 and b[2] or size, b[3]) end
+    if text and text.GetFont and scale ~= 1 then
+        local font, size, flags = text:GetFont()
+        if font and size then text:SetFont(font, size * scale, flags) end
     end
 end
 
+-- Draws the category buttons again with the current width and text size
 function AHF:StretchCategoryButtons()
     local list = self.frame and self.frame.CategoriesList
     local box = list and list.ScrollBox
     if not AHF.HasRows(box) then return end
-    -- Nothing to change at Blizzard's own width and text, unless changed before
-    local changed = self.db.sidebarWidth ~= self.BLIZZARD_SIDEBAR or self.db.categoryFontSize ~= 0
-    if not changed and not self.sidebarStretched then return end
-    self.sidebarStretched = true
     AHF.SetBoxRowHeight(box, self:CategoryHeight(), self.CATEGORY_HEIGHT)
-    box:ForEachFrame(StretchCategoryButton)
+    local setUp = _G.AuctionHouseFilterButton_SetUp
+    box:ForEachFrame(function(btn)
+        local data = btn.GetElementData and btn:GetElementData()
+        -- Blizzard's sizes and font first; the hook then fits them (fitting
+        -- without that would add to the sizes already fitted)
+        if setUp and type(data) == "table" then setUp(btn, data) end
+    end)
 end
 
-function AHF:SetCategoryFontSize(size)
-    local ok = false
-    for _, v in ipairs(self.CATEGORY_FONT_SIZES) do if v == size then ok = true end end
-    self.db.categoryFontSize = ok and size or 0
+function AHF:SetCategoryTextScale(v)
+    self.db.categoryTextScale = self.ValidTextScale(v) and v or 100
     self:StretchCategoryButtons()
     self:RefreshOptions()
 end
@@ -343,12 +328,14 @@ function AHF:SetupLayout(f)
         end)
     end
 
-    -- Category buttons are reused as the list scrolls; stretch each new layout
+    -- Category buttons are set up again by Blizzard whenever the list is drawn
+    if type(_G.AuctionHouseFilterButton_SetUp) == "function" then
+        hooksecurefunc("AuctionHouseFilterButton_SetUp", function(btn) AHF:FitCategoryButton(btn) end)
+    end
     local box = f.CategoriesList and f.CategoriesList.ScrollBox
     if box and box.RegisterCallback then
-        pcall(box.RegisterCallback, box, "OnLayout", function() AHF:StretchCategoryButtons() end, AHF)
         pcall(box.RegisterCallback, box, "OnAcquiredFrame", function(_, btn)
-            if AHF.sidebarStretched and btn and btn.SetHeight then btn:SetHeight(AHF:CategoryHeight()) end
+            if btn and btn.SetHeight then btn:SetHeight(AHF:CategoryHeight()) end
         end, AHF)
     end
 end

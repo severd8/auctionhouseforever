@@ -123,19 +123,19 @@ local function BuildColumnsTab(p)
     MutedNote(side, "Blizzard's own width is " .. AHF.BLIZZARD_SIDEBAR .. ".", 12, -76)
     T.RowLabel(side, "Category text size", 12, -102)
     local catLabels = {}
-    for _, v in ipairs(AHF.CATEGORY_FONT_SIZES) do catLabels[v] = (v == 0) and "Default" or tostring(v) end
-    local catSize = T.Dropdown(side, 120, AHF.CATEGORY_FONT_SIZES, catLabels,
-        function() return AHF.db.categoryFontSize end, function(v) AHF:SetCategoryFontSize(v) end)
+    for _, v in ipairs(AHF.TEXT_SCALES) do catLabels[v] = (v == 100) and "Default" or (v .. "%") end
+    local catSize = T.Dropdown(side, 120, AHF.TEXT_SCALES, catLabels,
+        function() return AHF.db.categoryTextScale end, function(v) AHF:SetCategoryTextScale(v) end)
     catSize:SetPoint("TOPLEFT", 150, -100)
     catSize.menuTitle = "Category text size"
     TipAll(catSize, "Category text size", "The size of the text in the category list. The buttons get taller "
-        .. "with bigger text. Default is the game's own size.")
+        .. "with bigger text. Default is the game's own size; the others are a percentage of it.")
     AddRefresher(catSize.Refresh)
     local reset = FlatButton(side, "Reset", 54, 18)
     reset:SetPoint("TOPRIGHT", -8, -6)
     reset:SetScript("OnClick", function()
         AHF:SetSidebarWidth(AHF.BLIZZARD_SIDEBAR)
-        AHF:SetCategoryFontSize(0)
+        AHF:SetCategoryTextScale(100)
     end)
     TipAll(reset, "Reset", "The category list back to Blizzard's width and text size.")
 
@@ -147,13 +147,13 @@ local function BuildColumnsTab(p)
 
     T.RowLabel(cols, "Row text size", 12, -100)
     local labels = {}
-    for _, v in ipairs(AHF.ROW_FONT_SIZES) do labels[v] = (v == 0) and "Default" or tostring(v) end
-    local size = T.Dropdown(cols, 120, AHF.ROW_FONT_SIZES, labels,
-        function() return AHF.db.rowFontSize end, function(v) AHF:SetRowFontSize(v) end)
+    for _, v in ipairs(AHF.TEXT_SCALES) do labels[v] = (v == 100) and "Default" or (v .. "%") end
+    local size = T.Dropdown(cols, 120, AHF.TEXT_SCALES, labels,
+        function() return AHF.db.rowTextScale end, function(v) AHF:SetRowTextScale(v) end)
     size:SetPoint("TOPLEFT", 150, -98)
     size.menuTitle = "Row text size"
     TipAll(size, "Row text size", "The size of the text in every list's rows: names, prices, quantities. "
-        .. "Rows get taller with bigger text. Default is the game's own size.")
+        .. "Rows get taller with bigger text. Default is the game's own size; the others are a percentage of it.")
     AddRefresher(size.Refresh)
 
     local count = Text(cols, "", "GameFontHighlightSmall")
