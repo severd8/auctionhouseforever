@@ -123,8 +123,8 @@ local function BuildColumnsTab(p)
     MutedNote(side, "Blizzard's own width is " .. AHF.BLIZZARD_SIDEBAR .. ".", 12, -76)
     T.RowLabel(side, "Category text size", 12, -102)
     local catLabels = {}
-    for _, v in ipairs(AHF.TEXT_SCALES) do catLabels[v] = (v == 100) and "Default" or (v .. "%") end
-    local catSize = T.Dropdown(side, 120, AHF.TEXT_SCALES, catLabels,
+    for _, v in ipairs(AHF.CATEGORY_TEXT_SCALES) do catLabels[v] = (v == 100) and "Default" or (v .. "%") end
+    local catSize = T.Dropdown(side, 120, AHF.CATEGORY_TEXT_SCALES, catLabels,
         function() return AHF.db.categoryTextScale end, function(v) AHF:SetCategoryTextScale(v) end)
     catSize:SetPoint("TOPLEFT", 150, -100)
     catSize.menuTitle = "Category text size"

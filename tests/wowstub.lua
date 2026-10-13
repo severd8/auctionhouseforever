@@ -368,6 +368,7 @@ function FakeAuctionHouse()
         b.SelectedTexture = newObj("Texture", nil, b)
         b.__data = { type = "category", name = "Weapons" }
         function b:GetElementData() return self.__data end
+        function b:GetNormalFontObject() return self.__fontObject end
         box.__buttons[i] = b
     end
     -- Like Blizzard's (Classic): every draw puts fixed sizes and its font back
@@ -375,7 +376,9 @@ function FakeAuctionHouse()
         button.NormalTexture:SetSize(136, 20)
         button.SelectedTexture:SetSize(134, 20)
         button.HighlightTexture:SetSize(132, 21)
-        button.Text:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+        -- SetNormalFontObject: the font object's size; a size set on the text
+        -- itself stays (like the game)
+        button.__fontObject = button.__fontObject or { GetFont = function() return "Fonts\\FRIZQT__.TTF", 10, "" end }
         button.setUps = (button.setUps or 0) + 1
     end
     function box:ForEachFrame(fn) for _, b in ipairs(self.__buttons) do fn(b) end end
@@ -392,6 +395,7 @@ function FakeAuctionHouse()
         t.__text = name
         t.__right = 100 * i
         function t:GetRight() return self.__right end
+        function t:GetBottom() return 10 end
         f.Tabs[i] = t
     end
     f.SearchBar = newObj("Frame", nil, f)

@@ -1,3 +1,9 @@
+## 1.3.1
+
+- Fixed: category text grew bigger every time the list redrew, and wouldn't size back down. Category text now goes up to 150%; a saved 200% goes back to Default.
+- The **AH Forever** tab now looks like the other tabs and sits after the last one (after Auctionator's tabs).
+- In the AH Forever tab, the logo and name are no longer hidden behind the NPC portrait.
+
 ## 1.3.0
 
 - **Settings in the Auction House**: a new **AH Forever** tab after the other tabs (Auctionator's too) shows the settings right inside the Auction House. `/ahf` opens it while the Auction House is open; otherwise the settings open in their own window, as before.

@@ -46,11 +46,12 @@ AHF.LIMITS = {
     scale = { 0.6, 1.5 },
     sidebarWidth = { AHF.BLIZZARD_SIDEBAR, 320 },
     rowTextScale = { 100, 200 },
-    categoryTextScale = { 100, 200 },
+    categoryTextScale = { 100, 150 },
     column = { 30, 400 },   -- a column dragged by its divider
 }
 AHF.NAME_MIN = 150          -- the Name column never gets narrower than this
-AHF.TEXT_SCALES = { 100, 110, 125, 150, 175, 200 }   -- the text size choices, % of the game's own
+AHF.TEXT_SCALES = { 100, 110, 125, 150, 175, 200 }   -- the row text size choices, % of the game's own
+AHF.CATEGORY_TEXT_SCALES = { 100, 110, 125, 150 }   -- the category list is narrow: smaller choices
 AHF.CATEGORY_HEIGHT = 21   -- Blizzard's category button height
 AHF.ROW_HEIGHT = 20   -- Blizzard's row height; rows grow with bigger text (RowHeight)
 
@@ -102,9 +103,9 @@ local function PrepareSettings(db)
         if type(db[k]) == "number" then db[k] = Clamp(db[k], range) end
     end
     if db.point ~= nil and not ValidPoint(db.point) then db.point = nil end
-    for _, key in ipairs({ "rowTextScale", "categoryTextScale" }) do
+    for key, list in pairs({ rowTextScale = AHF.TEXT_SCALES, categoryTextScale = AHF.CATEGORY_TEXT_SCALES }) do
         local ok = false
-        for _, v in ipairs(AHF.TEXT_SCALES) do if v == db[key] then ok = true end end
+        for _, v in ipairs(list) do if v == db[key] then ok = true end end
         if not ok then db[key] = 100 end
     end
     db.rowFontSize, db.categoryFontSize = nil, nil   -- 1.2.x point sizes, replaced by percentages

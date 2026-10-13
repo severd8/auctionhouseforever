@@ -147,6 +147,8 @@ end
 ---------------------------------------------------------------------------
 -- Stretches a category button's artwork with the button (the textures have
 -- fixed sizes in Blizzard's template; the text is already anchored both sides)
+local catBase = setmetatable({}, { __mode = "k" })   -- the game's font of category texts (when no font object)
+
 -- Category text size and button height, as a % of the game's own
 function AHF:CategoryHeight()
     return math.floor(self.CATEGORY_HEIGHT * self.db.categoryTextScale / 100 + 0.5)
@@ -161,7 +163,8 @@ function AHF:FitCategoryButton(btn)
     local scale = self.db.categoryTextScale / 100
     local h = self:CategoryHeight()
     local dh = h - self.CATEGORY_HEIGHT
-    if dw == 0 and dh == 0 and scale == 1 then return end
+    if dw == 0 and dh == 0 and scale == 1 and not catBase.touched then return end
+    catBase.touched = true
     if (btn:GetHeight() or 0) ~= h then btn:SetHeight(h) end
     for _, key in ipairs({ "NormalTexture", "SelectedTexture", "HighlightTexture" }) do
         local tex = btn[key]
@@ -170,9 +173,18 @@ function AHF:FitCategoryButton(btn)
             if (w or 0) > 0 then tex:SetSize(w + dw, (th or 0) + dh) end
         end
     end
+    -- Always from the game's size: the button's font object (a size set on the
+    -- text itself stays through Blizzard's setup, so scaling the text's
+    -- current size would grow it on every redraw)
     local text = type(btn.Text) == "table" and btn.Text or nil
-    if text and text.GetFont and scale ~= 1 then
-        local font, size, flags = text:GetFont()
+    if text and text.SetFont then
+        local fo = btn.GetNormalFontObject and btn:GetNormalFontObject()
+        local font, size, flags
+        if type(fo) == "table" and fo.GetFont then font, size, flags = fo:GetFont() end
+        if not font then
+            if not catBase[text] then catBase[text] = { text:GetFont() } end
+            font, size, flags = catBase[text][1], catBase[text][2], catBase[text][3]
+        end
         if font and size then text:SetFont(font, size * scale, flags) end
     end
 end
@@ -193,7 +205,9 @@ function AHF:StretchCategoryButtons()
 end
 
 function AHF:SetCategoryTextScale(v)
-    self.db.categoryTextScale = self.ValidTextScale(v) and v or 100
+    local ok = false
+    for _, c in ipairs(self.CATEGORY_TEXT_SCALES) do if c == v then ok = true end end
+    self.db.categoryTextScale = ok and v or 100
     self:StretchCategoryButtons()
     self:RefreshOptions()
 end

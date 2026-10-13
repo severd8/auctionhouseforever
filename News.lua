@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.3.1", date = "2026-10-13", items = {
+        "Fixed: category text growing on its own. The AH Forever tab matches the others and sits last.",
+    } },
     { version = "1.3.0", date = "2026-10-13", items = {
         "Settings in their own AH Forever tab inside the Auction House.",
         "Click the iLvl, Req Lvl, Vendor or Type header to sort the results.",
