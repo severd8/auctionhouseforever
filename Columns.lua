@@ -357,7 +357,10 @@ local function ApplyRowHeight(entry)
     if not AHF.HasRows(box) or not box.GetView then return end
     local h = AHF:RowHeight()
     local view = box:GetView()
-    if view.GetElementExtent and view.SetElementExtent and view:GetElementExtent() ~= h then
+    -- view.elementExtent is nil until the list's first rows (GetElementExtent
+    -- then needs a row index and errors without one), so read the field
+    local current = type(view) == "table" and view.elementExtent or AHF.ROW_HEIGHT
+    if view.SetElementExtent and current ~= h then
         view:SetElementExtent(h)
         box:ForEachFrame(function(row) row:SetHeight(h) end)
         if box.FullUpdate then box:FullUpdate(true) elseif box.Update then box:Update() end

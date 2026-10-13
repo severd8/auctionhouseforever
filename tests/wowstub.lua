@@ -298,9 +298,14 @@ local function NewItemList(parent, layout)
     function list:UpdateTableBuilderLayout()
         if not self.tableBuilder then self.tableBuilder = NewTableBuilder(self.HeaderContainer) end
         if not self.ScrollBox.__view then
-            local view = { extent = 20 }
-            function view:GetElementExtent() return self.extent end
-            function view:SetElementExtent(e) self.extent = e end
+            -- Like the game: no row extent until the first rows, and asking for
+            -- it without a row index errors until then
+            local view = {}
+            function view:GetElementExtent(i)
+                if not self.elementExtent then return i < 0 end
+                return self.elementExtent
+            end
+            function view:SetElementExtent(e) self.elementExtent = e end
             self.ScrollBox.__view = view
         end
         if self.tableBuilderLayoutDirty then

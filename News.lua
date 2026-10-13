@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.2.1", date = "2026-10-13", items = {
+        "Fixed: an error when opening the Auction House.",
+    } },
     { version = "1.2.0", date = "2026-10-13", items = {
         "Columns button beside the search box: tick columns on or off and move them.",
         "New columns: iLvl, Req, Type and Vendor (green = sells to a vendor for more); Per unit and Seller.",

@@ -1,3 +1,7 @@
+## 1.2.1
+
+- Fixed: an error when opening the Auction House in 1.2.0.
+
 ## 1.2.0
 
 - **Columns button** beside the search box, in the same style as Filter: tick columns on or off and move them left or right, for the list on screen.
