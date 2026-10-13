@@ -403,6 +403,10 @@ assertEq(AHF:CellText("seller", { owners = { "Grom" }, totalNumberOfOwners = 1 }
 assertEq(AHF:CellText("seller", { owners = { "Grom", "Thrall" }, totalNumberOfOwners = 3 }), "Grom +2", "several sellers")
 assertEq(AHF:CellText("seller", { owners = {} }), "", "seller hidden by the game")
 assertEq(AHF:CellText("ilvl", "junk"), "", "bad row data")
+-- Everything Blizzard's rows call on a cell (TableBuilderCellMixin)
+for _, m in ipairs({ "Init", "Populate", "OnLineEnter", "OnLineLeave" }) do
+    assertEq(type(AuctionHouseForeverCellMixin[m]), "function", "cells have " .. m)
+end
 -- An item the game hasn't loaded yet fills in when it arrives
 ITEMS[100].uncached = true
 assertEq(AHF:CellText("req", helm), "", "blank while loading")

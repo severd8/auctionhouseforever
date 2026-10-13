@@ -150,7 +150,11 @@ end
 ---------------------------------------------------------------------------
 -- The cell template's code (Cells.xml)
 ---------------------------------------------------------------------------
+-- Blizzard's table rows call Init, Populate, OnLineEnter and OnLineLeave on
+-- every cell (TableBuilderCellMixin), so all four must exist
 AuctionHouseForeverCellMixin = {}
+function AuctionHouseForeverCellMixin:OnLineEnter() end
+function AuctionHouseForeverCellMixin:OnLineLeave() end
 
 function AuctionHouseForeverCellMixin:Init(kind)
     self.kind = kind

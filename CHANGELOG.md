@@ -1,3 +1,7 @@
+## 1.2.2
+
+- Fixed: an error when moving the mouse over the search results in 1.2.0 and 1.2.1.
+
 ## 1.2.1
 
 - Fixed: an error when opening the Auction House in 1.2.0.

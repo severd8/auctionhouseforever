@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.2.2", date = "2026-10-13", items = {
+        "Fixed: an error when moving the mouse over the search results.",
+    } },
     { version = "1.2.1", date = "2026-10-13", items = {
         "Fixed: an error when opening the Auction House.",
     } },
