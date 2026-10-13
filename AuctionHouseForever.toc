@@ -7,8 +7,7 @@
 ## SavedVariables: AuctionHouseForeverDB
 ## SavedVariablesPerCharacter: AuctionHouseForeverCharDB
 ## X-License: MIT
-# CurseForge project ID: replace the next line with  ## X-Curse-Project-ID: <your project ID>
-# X-Curse-Project-ID: TBD
+## X-Curse-Project-ID: 1742416
 ## X-Category: Auction & Economy
 
 Theme.lua

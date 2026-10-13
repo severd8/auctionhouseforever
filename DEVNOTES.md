@@ -3,7 +3,7 @@
 An addon for **World of Warcraft: Forever** (interface 16001, client 1.60.x) that makes the retail-style Auction House (`Blizzard_AuctionHouseUI`, `AuctionHouseFrame`) resizable, movable and scalable, with draggable column widths and an adjustable category list. It changes only layout, size and styling.
 
 - Author: `severd8`.
-- CurseForge project ID: **TBD**. Once the project exists, put it in `AuctionHouseForever.toc`: replace the line `# X-Curse-Project-ID: TBD` with `## X-Curse-Project-ID: <id>` (two `#`, a number), and write it here. The release workflow refuses to upload until it's there.
+- CurseForge project ID: **1742416** (in the `.toc` as `X-Curse-Project-ID`).
 - License: MIT.
 
 ## Files
