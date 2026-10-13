@@ -116,17 +116,30 @@ local function BuildWindowTab(p)
 end
 
 local function BuildColumnsTab(p)
-    local side = Card(p, "Category list", 0, 0, PAGE_W, 104)
+    local side = Card(p, "Category list", 0, 0, PAGE_W, 140)
     FlatSlider(side, "Category list width", 12, -30, HALF_W - 20, "sidebarWidth",
         function(v) AHF:SetSidebarWidth(v) end,
         "How wide the list of categories on the left of the Buy tab is. The results list makes room.")
     MutedNote(side, "Blizzard's own width is " .. AHF.BLIZZARD_SIDEBAR .. ".", 12, -76)
+    T.RowLabel(side, "Category text size", 12, -102)
+    local catLabels = {}
+    for _, v in ipairs(AHF.CATEGORY_FONT_SIZES) do catLabels[v] = (v == 0) and "Default" or tostring(v) end
+    local catSize = T.Dropdown(side, 120, AHF.CATEGORY_FONT_SIZES, catLabels,
+        function() return AHF.db.categoryFontSize end, function(v) AHF:SetCategoryFontSize(v) end)
+    catSize:SetPoint("TOPLEFT", 150, -100)
+    catSize.menuTitle = "Category text size"
+    TipAll(catSize, "Category text size", "The size of the text in the category list. The buttons get taller "
+        .. "with bigger text. Default is the game's own size.")
+    AddRefresher(catSize.Refresh)
     local reset = FlatButton(side, "Reset", 54, 18)
     reset:SetPoint("TOPRIGHT", -8, -6)
-    reset:SetScript("OnClick", function() AHF:SetSidebarWidth(AHF.BLIZZARD_SIDEBAR) end)
-    TipAll(reset, "Reset", "The category list back to Blizzard's width.")
+    reset:SetScript("OnClick", function()
+        AHF:SetSidebarWidth(AHF.BLIZZARD_SIDEBAR)
+        AHF:SetCategoryFontSize(0)
+    end)
+    TipAll(reset, "Reset", "The category list back to Blizzard's width and text size.")
 
-    local cols = Card(p, "Columns", 0, -114, PAGE_W, 198)
+    local cols = Card(p, "Columns", 0, -150, PAGE_W, 198)
     MutedNote(cols, "Drag the line between two column headers to resize a column. Double-click it for "
         .. "the column's default width. The Name column takes the rest of the room.", 12, -30, PAGE_W - 24)
     MutedNote(cols, "Hide, show and reorder columns on the Show & Order tab. Everything is saved for each "

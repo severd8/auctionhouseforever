@@ -348,13 +348,18 @@ function FakeAuctionHouse()
         local b = newObj("Button", nil, box)
         b.__w = 132
         b.NormalTexture = newObj("Texture", nil, b)
-        b.NormalTexture.__w = 136
+        b.NormalTexture.__w, b.NormalTexture.__h = 136, 32
+        b.__h = 21
+        b.Text = b:CreateFontString()
         b.HighlightTexture = newObj("Texture", nil, b)
         b.HighlightTexture.__w = 130
         box.__buttons[i] = b
     end
     function box:ForEachFrame(fn) for _, b in ipairs(self.__buttons) do fn(b) end end
-    function box:GetView() return true end   -- the category list has its view from the start
+    -- The category list has its view from the start
+    box.__view = { elementExtent = 21 }
+    function box.__view:SetElementExtent(e) self.elementExtent = e end
+    function box:GetView() return self.__view end
     box.__callbacks = {}
     function box:RegisterCallback(event, fn, owner) self.__callbacks[event] = fn end
     f.CategoriesList.ScrollBox = box

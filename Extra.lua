@@ -298,9 +298,9 @@ function AHF:SetupColumnsButton(f)
     local ok, b = pcall(CreateFrame, "DropdownButton", nil, bar, "WowStyle1FilterDropdownTemplate")
     if not ok or not b or not b.SetupMenu then return end
     b:SetSize(93, 22)
-    if b.SetDefaultText then b:SetDefaultText("Columns") end
-    if b.OverrideText then b:OverrideText("Columns") end
-    if type(b.Text) == "table" then b.Text:SetText("Columns") elseif b.SetText then b:SetText("Columns") end
+    -- The template's own SetText (DropdownTextMixin): setting only the font
+    -- string would be put back to "Filter" the next time the menu updates
+    b:SetText("Columns")
     local left = type(bar.FavoritesSearchButton) == "table" and bar.FavoritesSearchButton or bar.SearchBox
     if left then b:SetPoint("RIGHT", left, "LEFT", -10, 0) else b:SetPoint("LEFT", bar, "LEFT", -103, 0) end
     b:SetupMenu(function(dropdown, root) AHF:BuildColumnsMenu(dropdown, root) end)

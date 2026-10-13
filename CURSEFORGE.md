@@ -18,7 +18,7 @@ It works alongside Auctionator and other Auction House addons: their tabs, colum
 - **Hide, show and reorder columns** with the **Columns** button beside the search box (or the Show & Order tab). Columns from other addons too.
 - **Extra columns**: **iLvl**, **Req**, **Type** and **Vendor** (green when you could sell it to a vendor for more than the lowest buyout) on the search results; **Per unit** and **Seller** on an item's auctions.
 - **Row text size** for every list; rows grow with bigger text.
-- **Category list width.** Make the list of categories on the left wider.
+- **Category list width and text size.** Make the list of categories on the left wider, and its text bigger.
 - **Settings window** with hover help on every option, and a Reset to default button.
 
 ## Installation
@@ -40,7 +40,7 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 | Tab | What's there |
 |---|---|
 | **Window** | Width, height and scale, keep the window in place, reset position |
-| **Columns** | Category list width, row text size, how many columns have their own width, reset all columns |
+| **Columns** | Category list width and text size, row text size, how many columns have their own width, reset all columns |
 | **Show & Order** | For each list: show or hide each column, move it left or right, show all in the default order |
 | **General** | Welcome screen, Reset to default, command list |
 

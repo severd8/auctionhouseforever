@@ -353,18 +353,7 @@ end
 -- current row height. A new row gets it as it's handed out (OnAcquiredFrame),
 -- before Blizzard lays its cells out.
 local function ApplyRowHeight(entry)
-    local box = entry.list.ScrollBox
-    if not AHF.HasRows(box) or not box.GetView then return end
-    local h = AHF:RowHeight()
-    local view = box:GetView()
-    -- view.elementExtent is nil until the list's first rows (GetElementExtent
-    -- then needs a row index and errors without one), so read the field
-    local current = type(view) == "table" and view.elementExtent or AHF.ROW_HEIGHT
-    if view.SetElementExtent and current ~= h then
-        view:SetElementExtent(h)
-        box:ForEachFrame(function(row) row:SetHeight(h) end)
-        if box.FullUpdate then box:FullUpdate(true) elseif box.Update then box:Update() end
-    end
+    AHF.SetBoxRowHeight(entry.list.ScrollBox, AHF:RowHeight(), AHF.ROW_HEIGHT)
 end
 
 local function ApplyRowFonts(entry)

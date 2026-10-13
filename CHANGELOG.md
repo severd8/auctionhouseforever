@@ -1,6 +1,9 @@
 ## 1.2.2
 
 - Fixed: an error when moving the mouse over the search results in 1.2.0 and 1.2.1.
+- Fixed: the Columns button said "Filter".
+- New: **Category text size** (Columns tab); the category buttons get taller with bigger text.
+- Row text size now goes up to 20.
 
 ## 1.2.1
 

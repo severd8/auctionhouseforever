@@ -7,7 +7,8 @@ local AHF = ns.AHF
 
 AHF.NEWS = {
     { version = "1.2.2", date = "2026-10-13", items = {
-        "Fixed: an error when moving the mouse over the search results.",
+        "Fixed: an error when moving the mouse over the search results, and the Columns button's name.",
+        "Category text size, and row text up to 20 (Columns tab).",
     } },
     { version = "1.2.1", date = "2026-10-13", items = {
         "Fixed: an error when opening the Auction House.",

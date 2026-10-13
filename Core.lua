@@ -34,6 +34,7 @@ AHF.DEFAULTS = {
     locked = false,
     sidebarWidth = AHF.BLIZZARD_SIDEBAR,
     rowFontSize = 0,       -- text size in the lists' rows; 0 = the game's own
+    categoryFontSize = 0,  -- text size in the category list; 0 = the game's own
     showSplash = true,
     lastSeenVersion = "",
 }
@@ -44,11 +45,14 @@ AHF.LIMITS = {
     height = { AHF.BLIZZARD_HEIGHT, 1100 },
     scale = { 0.6, 1.5 },
     sidebarWidth = { AHF.BLIZZARD_SIDEBAR, 320 },
-    rowFontSize = { 0, 16 },
+    rowFontSize = { 0, 20 },
+    categoryFontSize = { 0, 18 },
     column = { 30, 400 },   -- a column dragged by its divider
 }
 AHF.NAME_MIN = 150          -- the Name column never gets narrower than this
-AHF.ROW_FONT_SIZES = { 0, 11, 12, 13, 14, 15, 16 }   -- the row text size choices (0 = Default)
+AHF.ROW_FONT_SIZES = { 0, 12, 13, 14, 15, 16, 18, 20 }   -- the row text size choices (0 = Default)
+AHF.CATEGORY_FONT_SIZES = { 0, 12, 13, 14, 15, 16, 18 }   -- the category text size choices
+AHF.CATEGORY_HEIGHT = 21   -- Blizzard's category button height
 AHF.ROW_HEIGHT = 20   -- Blizzard's row height; rows grow with bigger text (RowHeight)
 
 local function Clamp(v, range)
@@ -65,6 +69,20 @@ function AHF.HasRows(box)
         and (box.GetView == nil or box:GetView() ~= nil)
 end
 
+-- Sets the height of a ScrollBox list's rows: the view's row extent (the
+-- scroll range) and the rows already shown. view.elementExtent is nil until the
+-- list's first rows (GetElementExtent errors then without a row index), so the
+-- field is read directly.
+function AHF.SetBoxRowHeight(box, h, default)
+    if not AHF.HasRows(box) or not box.GetView then return end
+    local view = box:GetView()
+    if type(view) ~= "table" or not view.SetElementExtent then return end
+    if (view.elementExtent or default) == h then return end
+    view:SetElementExtent(h)
+    box:ForEachFrame(function(row) row:SetHeight(h) end)
+    if box.FullUpdate then box:FullUpdate(true) elseif box.Update then box:Update() end
+end
+
 local function ValidPoint(p)
     return type(p) == "table" and type(p[1]) == "string" and type(p[2]) == "string"
         and type(p[3]) == "number" and type(p[4]) == "number"
@@ -79,9 +97,11 @@ local function PrepareSettings(db)
         if type(db[k]) == "number" then db[k] = Clamp(db[k], range) end
     end
     if db.point ~= nil and not ValidPoint(db.point) then db.point = nil end
-    local sizeOk = false
-    for _, v in ipairs(AHF.ROW_FONT_SIZES) do if v == db.rowFontSize then sizeOk = true end end
-    if not sizeOk then db.rowFontSize = 0 end
+    for key, list in pairs({ rowFontSize = AHF.ROW_FONT_SIZES, categoryFontSize = AHF.CATEGORY_FONT_SIZES }) do
+        local ok = false
+        for _, v in ipairs(list) do if v == db[key] then ok = true end end
+        if not ok then db[key] = 0 end
+    end
     db.schema = AHF.SCHEMA
     return db
 end
@@ -158,6 +178,7 @@ function AHF:ResetAll()
     self:ResetPosition()
     self:ResetColumns()
     self:ApplyRowFonts()
+    self:ApplyLayout()
 end
 
 ---------------------------------------------------------------------------
