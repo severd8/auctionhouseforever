@@ -328,7 +328,9 @@ step("category list width")
 AHF:SetSidebarWidth(250)
 local cat = f.CategoriesList
 assertEq(cat:GetWidth(), 250, "wider category list")
-assertEq(cat.Background:GetWidth(), 162 + 82, "its background stretched")
+assertEq(cat.Background:GetNumPoints(), 2, "its background fills it")
+assertEq(select(3, cat.Background:GetPoint(2)), "BOTTOMRIGHT", "anchored at the bottom right too")
+assertEq(list.Background:GetNumPoints(), 2, "results background fills the list")
 assertEq(list.ScrollBox:GetWidth(), 1200 - 250 - 40, "results list makes room")
 local btn = cat.ScrollBox.__buttons[1]
 assertEq(btn.NormalTexture:GetNumPoints(), 2, "button art anchored both sides")
@@ -338,7 +340,14 @@ assertEq(btn.HighlightTexture:GetWidth(), 130 + 82, "highlight stretched with th
 AHF:SetSidebarWidth(1000)
 assertEq(AHF.db.sidebarWidth, 320, "sidebar limit")
 AHF:SetSidebarWidth(168)
-assertEq(cat.Background:GetWidth(), 162, "background back")
+assertEq(cat:GetHeight(), 438 + 700 - 538, "category list as tall as the window allows")
+AHF.grip.__scripts.OnMouseDown(AHF.grip, "LeftButton")
+f.__h = 800
+f.__scripts.OnSizeChanged(f, f.__w, 800)
+assertEq(cat:GetHeight(), 438 + 800 - 538, "follows the window while dragging")
+AHF.grip.__scripts.OnMouseUp(AHF.grip, "LeftButton")
+AHF:SetSize(1200, 700)
+assertEq(cat:GetHeight(), 438 + 700 - 538, "and back")
 
 step("settings window")
 AHF:ToggleConfig()

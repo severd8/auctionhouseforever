@@ -174,16 +174,50 @@ function AHF:StretchCategoryButtons()
     box:ForEachFrame(StretchCategoryButton)
 end
 
+local function Child(t, key)
+    local v = type(t) == "table" and t[key]
+    return type(v) == "table" and v or nil
+end
+
+-- A panel's background art has a fixed size in Blizzard's template (anchored
+-- only at its top left); anchor its bottom right too, mirroring the top left
+-- inset, so it fills the panel at any size
+local function StretchBackground(panel)
+    local bg = Child(panel, "Background")
+    if not bg or not bg.GetPoint or touched[bg] then return end
+    local _, _, _, x, y = bg:GetPoint(1)
+    x, y = x or 0, y or 0
+    bg:ClearAllPoints()
+    bg:SetPoint("TOPLEFT", panel, "TOPLEFT", x, y)
+    bg:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -x, -y)
+    touched[bg] = true
+end
+
+function AHF:StretchBackgrounds()
+    local f = self.frame
+    if not f then return end
+    StretchBackground(Child(f, "CategoriesList"))
+    StretchBackground(Child(f, "ItemSellFrame"))
+    StretchBackground(Child(f, "CommoditiesSellFrame"))
+    StretchBackground(Child(Child(f, "CommoditiesBuyFrame"), "BuyDisplay"))
+    StretchBackground(Child(Child(f, "AuctionsFrame"), "SummaryList"))
+    for _, e in ipairs(self.columnEntries or {}) do StretchBackground(e.list) end
+end
+
+-- The category list: the saved width, and as tall as the window allows (its
+-- height is fixed in Blizzard's template, and the results list takes its
+-- height from it)
 function AHF:ApplySidebar()
-    local list = self.frame and self.frame.CategoriesList
+    local f = self.frame
+    local list = f and f.CategoriesList
     if not list then return end
     local w = self.db.sidebarWidth
     if math.abs((list:GetWidth() or 0) - w) > 0.5 then list:SetWidth(w) end
-    local bg = list.Background
-    if bg then
-        if not touched[bg] then touched[bg] = { w = bg:GetWidth() or 0 } end
-        local bw = touched[bg].w
-        if bw > 0 then bg:SetWidth(bw + w - self.BLIZZARD_SIDEBAR) end
+    if not touched[list] then touched[list] = { h = list:GetHeight() or 0 } end
+    local base = touched[list].h
+    if base > 0 then
+        local h = base + (f:GetHeight() or self.BLIZZARD_HEIGHT) - self.BLIZZARD_HEIGHT
+        if math.abs((list:GetHeight() or 0) - h) > 0.5 then list:SetHeight(h) end
     end
     self:StretchCategoryButtons()
 end
@@ -255,6 +289,8 @@ function AHF:SetupLayout(f)
     for _, method in ipairs({ "SetSize", "SetWidth", "SetHeight", "SetScale" }) do
         hooksecurefunc(f, method, Reapply)
     end
+    -- The category list follows the window's height, also while dragging the grip
+    f:HookScript("OnSizeChanged", function() AHF:ApplySidebar() end)
     f:HookScript("OnShow", function()
         AHF:RememberBlizzardPoint()
         Reapply()

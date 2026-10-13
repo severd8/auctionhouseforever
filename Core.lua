@@ -167,6 +167,7 @@ function AHF:OnAuctionHouseLoaded()
     self.frame = f
     self:SetupLayout(f)
     self:SetupColumns(f)
+    self:StretchBackgrounds()
     self:ApplyLayout()
 end
 

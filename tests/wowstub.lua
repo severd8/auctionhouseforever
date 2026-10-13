@@ -12,8 +12,13 @@ PURCHASES = {}   -- any bid, buyout, purchase or post the addon makes (must stay
 
 local ObjMT = {}
 local Methods = {}
+-- Methods the addon's own widgets add (Theme.lua); a widget without them must
+-- fail here like in the game, not quietly do nothing
+local ADDON_METHODS = { SetDisabled = true, SetOn = true, SetHover = true, Refresh = true, Choose = true,
+    SetContent = true, ShowTab = true, FitLogo = true }
 ObjMT.__index = function(t, k)
     if Methods[k] then return Methods[k] end
+    if ADDON_METHODS[k] then return nil end
     if type(k) == "string" and k:match("^%u") then return function() return nil end end
     return nil
 end
@@ -248,6 +253,8 @@ end
 local function NewItemList(parent, layout)
     local list = newObj("Frame", nil, parent)
     list.HeaderContainer = newObj("Frame", nil, list)
+    list.Background = newObj("Texture", nil, list)
+    list.Background:SetPoint("TOPLEFT", 3, -3)
     list.ScrollBox = newObj("Frame", nil, list)
     list.ScrollBox.__w = 600
     -- Two rows, each with a cell holding a font string (and one nested deeper)
@@ -298,9 +305,10 @@ function FakeAuctionHouse()
     f.__shown = false
     f:SetPoint("CENTER")
     f.CategoriesList = newObj("Frame", nil, f)
-    f.CategoriesList.__w = 168
+    f.CategoriesList.__w, f.CategoriesList.__h = 168, 438
     f.CategoriesList.Background = newObj("Texture", nil, f.CategoriesList)
     f.CategoriesList.Background.__w = 162
+    f.CategoriesList.Background:SetPoint("TOPLEFT", 3, -3)
     local box = newObj("Frame", nil, f.CategoriesList)
     box.__buttons = {}
     for i = 1, 3 do

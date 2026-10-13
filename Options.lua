@@ -196,6 +196,7 @@ local function BuildOrderTab(p)
     TipAll(pick, "List", "Which Auction House list to set up. Each list keeps its own columns.")
 
     local resetList = FlatButton(card, "Show all, default order", 170)
+    T.Disabler(resetList, { resetList })
     resetList:SetPoint("TOPRIGHT", -12, -30)
     resetList:SetScript("OnClick", function(self)
         if not self.disabled then AHF:ResetColumnLayout(selected) end
