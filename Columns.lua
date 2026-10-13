@@ -344,7 +344,7 @@ end
 local function ApplyRowFonts(entry)
     local size = AHF.db.rowFontSize
     local box = entry.list.ScrollBox
-    if size == 0 or not box or not box.ForEachFrame then return end
+    if size == 0 or not AHF.HasRows(box) then return end
     box:ForEachFrame(function(row) SetRowFonts(row, size, 3) end)
 end
 

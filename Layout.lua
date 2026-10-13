@@ -167,7 +167,7 @@ end
 function AHF:StretchCategoryButtons()
     local list = self.frame and self.frame.CategoriesList
     local box = list and list.ScrollBox
-    if not box or not box.ForEachFrame then return end
+    if not AHF.HasRows(box) then return end
     -- Nothing to stretch at Blizzard's own width, unless it was wider before
     if self.db.sidebarWidth == self.BLIZZARD_SIDEBAR and not self.sidebarStretched then return end
     self.sidebarStretched = true

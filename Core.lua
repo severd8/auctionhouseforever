@@ -57,6 +57,13 @@ local function Clamp(v, range)
 end
 AHF.Clamp = Clamp
 
+-- A ScrollBox's rows can only be walked once Blizzard has given it a view
+-- (a list that has never been shown has none, and ForEachFrame errors)
+function AHF.HasRows(box)
+    return type(box) == "table" and box.ForEachFrame ~= nil
+        and (box.GetView == nil or box:GetView() ~= nil)
+end
+
 local function ValidPoint(p)
     return type(p) == "table" and type(p[1]) == "string" and type(p[2]) == "string"
         and type(p[3]) == "number" and type(p[4]) == "number"

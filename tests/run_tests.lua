@@ -310,6 +310,13 @@ tb = list.tableBuilder
 assertEq(tb:Names(), "Price,Name,Available,*", "plain layout")
 
 step("row text size")
+-- A list never shown has no rows yet: changing the size must not touch it
+local never = AHF.columnEntries[2].list
+local hadView = never.ScrollBox.__view
+never.ScrollBox.__view = nil
+AHF:SetRowFontSize(11)
+AHF:SetRowFontSize(0)
+never.ScrollBox.__view = hadView
 local row = list.ScrollBox.__rows[1]
 local cellText = row.__children[1].Text
 local deep = row.__children[1].__children[2].Gold

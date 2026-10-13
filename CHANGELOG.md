@@ -1,3 +1,7 @@
+## 1.1.2
+
+- Fixed: an error when changing **Row text size** before every list had been opened once.
+
 ## 1.1.1
 
 - Fixed: a taller window now makes the category list and the results list taller too, instead of leaving an empty area at the bottom.

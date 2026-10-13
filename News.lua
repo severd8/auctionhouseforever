@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.1.2", date = "2026-10-13", items = {
+        "Fixed: an error when changing Row text size.",
+    } },
     { version = "1.1.1", date = "2026-10-13", items = {
         "Fixed: taller windows show more rows, backgrounds fill the lists, and /ahf opens without an error.",
         "Cleaner Show & order tab.",

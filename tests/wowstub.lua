@@ -269,7 +269,12 @@ local function NewItemList(parent, layout)
         money.Gold = money:CreateFontString()
         list.ScrollBox.__rows[i] = row
     end
-    function list.ScrollBox:ForEachFrame(fn) for _, r in ipairs(self.__rows) do fn(r) end end
+    -- Like the game: no view (and ForEachFrame errors) until the list is first shown
+    function list.ScrollBox:GetView() return self.__view end
+    function list.ScrollBox:ForEachFrame(fn)
+        assert(self.__view, "ForEachFrame without a view")
+        for _, r in ipairs(self.__rows) do fn(r) end
+    end
     list.ScrollBox.__callbacks = {}
     function list.ScrollBox:RegisterCallback(event, fn) self.__callbacks[event] = fn end
     function list:GetHeaderContainer() return self.HeaderContainer end
@@ -277,6 +282,7 @@ local function NewItemList(parent, layout)
     list.tableBuilderLayoutDirty = true
     function list:UpdateTableBuilderLayout()
         if not self.tableBuilder then self.tableBuilder = NewTableBuilder(self.HeaderContainer) end
+        self.ScrollBox.__view = true
         if self.tableBuilderLayoutDirty then
             self.tableBuilder:Reset()
             self.tableBuilderLayoutFunction(self.tableBuilder)
@@ -323,6 +329,7 @@ function FakeAuctionHouse()
         box.__buttons[i] = b
     end
     function box:ForEachFrame(fn) for _, b in ipairs(self.__buttons) do fn(b) end end
+    function box:GetView() return true end   -- the category list has its view from the start
     box.__callbacks = {}
     function box:RegisterCallback(event, fn, owner) self.__callbacks[event] = fn end
     f.CategoriesList.ScrollBox = box
