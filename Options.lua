@@ -128,7 +128,7 @@ local function BuildColumnsTab(p)
     local cols = Card(p, "Columns", 0, -114, PAGE_W, 198)
     MutedNote(cols, "Drag the line between two column headers to resize a column. Double-click it for "
         .. "the column's default width. The Name column takes the rest of the room.", 12, -30, PAGE_W - 24)
-    MutedNote(cols, "Hide, show and reorder columns on the Show & order tab. Everything is saved for each "
+    MutedNote(cols, "Hide, show and reorder columns on the Show & Order tab. Everything is saved for each "
         .. "character, for every list (Buy, Sell, Auctions), columns from other addons included.", 12, -62, PAGE_W - 24)
 
     T.RowLabel(cols, "Row text size", 12, -100)
@@ -156,7 +156,7 @@ local function BuildColumnsTab(p)
         .. "order and width, for this character. Same as /ahf columns.")
 end
 
--- Names of the lists, for the Show & order tab
+-- Names of the lists, for the Show & Order tab
 local LIST_LABELS = {
     browse = "Buy: search results",
     itemBuy = "Buy: item auctions",
@@ -319,7 +319,7 @@ end
 local TABS = {
     { key = "window",  label = "Window",  icon = "Interface\\Icons\\INV_Misc_Spyglass_03", build = BuildWindowTab },
     { key = "columns", label = "Columns", icon = "Interface\\Icons\\INV_Misc_Note_01",     build = BuildColumnsTab },
-    { key = "order",   label = "Show & order", icon = "Interface\\Icons\\INV_Misc_Book_09",  build = BuildOrderTab },
+    { key = "order",   label = "Show & Order", icon = "Interface\\Icons\\INV_Misc_Book_09",  build = BuildOrderTab },
     { key = "general", label = "General", icon = "Interface\\Icons\\INV_Misc_Gear_01",     build = BuildGeneralTab },
 }
 

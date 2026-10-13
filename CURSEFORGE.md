@@ -31,7 +31,7 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 - **Resize**: drag the grip in the bottom right corner of the Auction House.
 - **Move**: drag the title bar at the top. Lock it with `/ahf lock` or in the settings.
 - **Resize a column**: point at the line between two column headers (it turns gold) and drag. Double-click the line to put that column back to its default width.
-- **Hide, show or reorder columns**: settings → **Show & order** tab. Pick a list, then use the switch and the arrows beside each column. The Name column always shows.
+- **Hide, show or reorder columns**: settings → **Show & Order** tab. Pick a list, then use the switch and the arrows beside each column. The Name column always shows.
 - **Open the settings**: type `/ahf`, or go to **Options → AddOns → AuctionHouse Forever**.
 
 ### Settings window
@@ -40,7 +40,7 @@ Then visit an auctioneer. The Auction House opens at its new size straight away.
 |---|---|
 | **Window** | Width, height and scale, lock the window, reset position |
 | **Columns** | Category list width, row text size, how many columns have their own width, reset all columns |
-| **Show & order** | For each list: show or hide each column, move it left or right, show all in the default order |
+| **Show & Order** | For each list: show or hide each column, move it left or right, show all in the default order |
 | **General** | Welcome screen, Reset to default, command list |
 
 ### Slash commands

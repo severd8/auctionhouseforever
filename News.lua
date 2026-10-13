@@ -11,10 +11,10 @@ AHF.NEWS = {
     } },
     { version = "1.1.1", date = "2026-10-13", items = {
         "Fixed: taller windows show more rows, backgrounds fill the lists, and /ahf opens without an error.",
-        "Cleaner Show & order tab.",
+        "Cleaner Show & Order tab.",
     } },
     { version = "1.1.0", date = "2026-10-13", items = {
-        "Hide, show and reorder columns: new Show & order tab in the settings (/ahf).",
+        "Hide, show and reorder columns: new Show & Order tab in the settings (/ahf).",
         "Row text size for every list (Columns tab).",
     } },
     { version = "1.0.0", date = "2026-10-13", items = {

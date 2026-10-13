@@ -390,7 +390,7 @@ local resetCols = findTip("Reset all columns")
 resetCols.__scripts.OnClick(resetCols)
 assertEq(AHF:SavedColumnCount(), 0, "column widths reset")
 assertEq(buy.tableBuilder:Width("Bid"), 140, "Bid back to default")
--- Show & order tab
+-- Show & Order tab
 win:ShowTab("order")
 local function findAll(title)
     local t = {}
