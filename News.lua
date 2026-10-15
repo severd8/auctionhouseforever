@@ -6,6 +6,13 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.4.0", date = "2026-10-15", items = {
+        "Req Lvl, iLvl and Type turn red for items you can't use.",
+        "Sorting by our columns now lasts for every search until you click one of the game's headers.",
+        "Copy another character's columns: Show & Order tab, Copy from.",
+        "Quick sizes on the Window tab; double-click the corner grip for the default size.",
+        "/ahf debug opens the details to copy into a bug report.",
+    } },
     { version = "1.3.5", date = "2026-10-15", items = {
         "Fixed: flickering while dragging Scale (it now changes when you let go). Scale goes up to 200%.",
     } },

@@ -113,11 +113,23 @@ local function BuildWindowTab(p)
     TipAll(scale, "Scale", "The size of everything in the Auction House: text, icons and the window. "
         .. "Changes when you let go of the slider.")
     AddRefresher(scale.Refresh)
-    MutedNote(size, "Never bigger than your screen. Blizzard's own size is 800 × 538.", 12, -124)
+    MutedNote(size, "Never bigger than your screen. Blizzard's own size is 800 × 538.", 12, -124, sw)
     local reset = FlatButton(size, "Reset", 54, 18)
     reset:SetPoint("TOPRIGHT", -8, -6)
     reset:SetScript("OnClick", function() AHF:ResetWindow() end)
     TipAll(reset, "Reset", "Size, scale and position back to the defaults. Same as /ahf reset.")
+    -- Quick sizes, under Scale
+    T.RowLabel(size, "Quick size", COL2, -76)
+    local bw = math.floor((sw - 16) / 3)
+    local x = COL2
+    for _, preset in ipairs(AHF.SIZE_PRESETS) do
+        local b = FlatButton(size, preset.label, bw, 20)
+        b:SetPoint("TOPLEFT", x, -100)
+        b:SetScript("OnClick", function() AHF:SetSize(preset.width, preset.height) end)
+        TipAll(b, preset.label .. " (" .. preset.width .. " × " .. preset.height .. ")",
+            preset.tip .. " Never bigger than your screen; scale stays as it is.")
+        x = x + bw + 8
+    end
 
     local pos = Card(p, "Position", 0, -160, PAGE_W, 120)
     Switch(pos, "Keep window in place", 12, -30, function() return AHF.db.locked end,
@@ -155,7 +167,7 @@ local function BuildColumnsTab(p)
     end)
     TipAll(reset, "Reset", "The category list back to Blizzard's width and text size.")
 
-    local cols = Card(p, "Columns", 0, -150, PAGE_W, 198)
+    local cols = Card(p, "Columns", 0, -150, PAGE_W, 230)
     MutedNote(cols, "Drag the line between two column headers to resize a column. Double-click it for "
         .. "the column's default width. The Name column takes the rest of the room.", 12, -30, PAGE_W - 24)
     MutedNote(cols, "Hide, show and reorder columns on the Show & Order tab. Everything is saved for each "
@@ -184,6 +196,10 @@ local function BuildColumnsTab(p)
     resetCols:SetScript("OnClick", function() AHF:ResetColumns() end)
     TipAll(resetCols, "Reset all columns", "Every list back to Blizzard's columns: all shown, in their default "
         .. "order and width, for this character. Same as /ahf columns.")
+    Switch(cols, "Red text for items you can't use", 12, -198, function() return AHF.db.markUnusable end,
+        function(v) AHF:SetMarkUnusable(v) end,
+        "Req Lvl turns red when it's above your level. iLvl and Type turn red when the game says you "
+        .. "can't use the item: level, armour or weapon skill, class or profession.")
 end
 
 -- Names of the lists, for the Show & Order tab
@@ -224,6 +240,29 @@ local function BuildOrderTab(p)
     end)
     TipAll(resetList, "Show all, default order", "Shows every column of this list again, in Blizzard's "
         .. "order. Widths stay as they are.")
+
+    -- Another character's columns, every list (saved when that character logs out)
+    local copy = FlatButton(card, "Copy from…", 110, 18)
+    copy:SetPoint("TOPRIGHT", -8, -6)
+    copy:SetScript("OnClick", function(self)
+        if not MenuUtil or not MenuUtil.CreateContextMenu then return end
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            local others = AHF:OtherCharacters()
+            if #others == 0 then
+                root:CreateTitle("No other characters yet: log in on one and set up its columns.")
+                return
+            end
+            root:CreateTitle("Replace this character's columns with:")
+            for _, who in ipairs(others) do
+                root:CreateButton(who, function()
+                    if AHF:CopyColumnsFrom(who) then AHF.Print("columns copied from " .. who .. ".") end
+                end)
+            end
+        end)
+    end)
+    TipAll(copy, "Copy from another character", "Gives this character the same columns as another one, "
+        .. "on every list: widths, hidden columns and order. Characters show up here after they log out "
+        .. "(or /reload) with this version.")
 
     -- Table: a header line, then one striped row per column
     local TOP, W = -66, PAGE_W - 24

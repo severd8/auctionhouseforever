@@ -1,3 +1,11 @@
+## 1.4.0
+
+- **Red for items you can't use**: on the search results, **Req Lvl** turns red when it's above your level, and **iLvl** and **Type** turn red when the game says you can't use the item (level, armour or weapon skill, class or profession). Turn it off on the Columns tab.
+- **The sort stays**: sorting by iLvl, Req Lvl, Vendor or Type now lasts for every search (and after a reload) until you click one of the game's own headers. The game's arrow no longer shows beside ours after a new search.
+- **Copy columns from another character**: **Copy from…** on the Show & Order tab gives this character another one's columns on every list. Characters show up there once they've logged out (or used `/reload`) with 1.4.0.
+- **Quick sizes**: **Compact**, **Wide** and **Tall** buttons on the Window tab, and double-click the corner grip for the default size.
+- **Bug reports**: `/ahf debug` opens a window with the details to copy: version, game build, tab, your settings and any other Auction House addons.
+
 ## 1.3.5
 
 - Fixed: the window flickered while dragging the **Scale** slider in the AH Forever tab. Scale now changes when you let go of the slider.

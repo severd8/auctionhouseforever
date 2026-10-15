@@ -398,6 +398,40 @@ assertEq(text, "1g0s0c", "vendor price")
 assert(color and color[2] == 1, "under vendor price: green")
 text, color = AHF:CellText("vendor", ring)
 assertEq(color, nil, "above vendor price: white")
+-- Red for items you can't use: a red line in the game's tooltip, or Req Lvl above yours
+UNUSABLE = { [300] = true }
+C_TooltipInfo = { GetItemByID = function(id)
+    local red, white = { r = 1, g = 0.125, b = 0.125 }, { r = 1, g = 1, b = 1 }
+    return { lines = { { leftColor = red }, { leftColor = white }, { leftColor = white, rightColor = UNUSABLE[id] and red or white } } }
+end }
+fire("SKILL_LINES_CHANGED")   -- forget what was worked out before the tooltip data
+RunTimers()
+local function colorOf(kind, row) return select(2, AHF:CellText(kind, row)) end
+assert(colorOf("ilvl", ring) and colorOf("ilvl", ring)[2] < 0.5, "can't use the ring: red iLvl")
+assert(colorOf("type", ring), "and red Type")
+assertEq(colorOf("req", ring), nil, "level 30, ring needs 25: white Req Lvl")
+assertEq(colorOf("ilvl", helm), nil, "usable helm: white (a red name line doesn't count)")
+assertEq(colorOf("type", herb), nil, "usable herb: white")
+PLAYER_LEVEL = 22
+assert(colorOf("req", ring), "Req Lvl above your level: red")
+UNUSABLE[300] = nil
+assert(colorOf("ilvl", ring), "kept until the player changes")
+fire("PLAYER_LEVEL_UP", 23)
+RunTimers()
+assertEq(colorOf("ilvl", ring), nil, "checked again after a level up")
+-- Without the game's tooltip data: the level only
+C_TooltipInfo = nil
+fire("SKILL_LINES_CHANGED")
+RunTimers()
+assert(colorOf("type", ring), "level 22, needs 25: red without tooltip data")
+assertEq(colorOf("type", helm), nil, "level 22, needs 20: white")
+AHF:SetMarkUnusable(false)
+assertEq(colorOf("type", ring), nil, "switched off: white")
+assertEq(colorOf("req", ring), nil, "Req Lvl too")
+AHF:SetMarkUnusable(true)
+PLAYER_LEVEL = 30
+fire("PLAYER_LEVEL_UP", 30)
+RunTimers()
 assertEq(AHF:CellText("unit", { buyoutAmount = 1000, quantity = 4 }), "0g2s50c", "per unit")
 assertEq(AHF:CellText("unit", { buyoutAmount = 0, quantity = 4 }), "", "no buyout")
 assertEq(AHF:CellText("seller", { owners = { "Grom" }, totalNumberOfOwners = 1 }), "Grom", "seller")
@@ -445,8 +479,21 @@ local reqButton
 for _, b in ipairs(sortButtons) do if b.__shown and b.kind == "req" then reqButton = b end end
 reqButton.__scripts.OnClick(reqButton)
 assertEq(names(), "Peacebloom,Mace,Cowl,Ring,Ring", "by Req Lvl")
+assertEq(AHF.db.browseSort.kind, "req", "sort saved")
+-- A new search: still sorted by Req Lvl, and the game's arrow stays off
+brf:UpdateHeaders()
+assertEq(tb:Column("Price").header.Arrow.__shown, false, "no game arrow after a new search")
+assertEq(reqButton.header.Arrow.__shown, true, "Req Lvl arrow kept")
+brf.browseResults = {}
+brf:UpdateBrowseResults({ ring, mace, herb })
+assertEq(names(), "Peacebloom,Mace,Ring", "the next search sorted the same way")
+-- A hidden column doesn't sort
+AHF:SetColumnShown("browse", "Req Lvl", false)
+assertEq(AHF:BrowseSort(), nil, "no sort by a hidden column")
+AHF:SetColumnShown("browse", "Req Lvl", true)
+assertEq(AHF:BrowseSort().kind, "req", "back when shown")
 brf:SetSortOrder(1)   -- a Blizzard header
-assertEq(AHF.browseSort, nil, "Blizzard's sort takes over")
+assertEq(AHF.db.browseSort, nil, "Blizzard's sort takes over")
 assertEq(reqButton.header.Arrow.__shown, false, "our arrow off")
 -- The Columns button: a menu for the list on screen
 local cb = AHF.columnsButton
@@ -564,6 +611,24 @@ lockSwitch.__scripts.OnClick(lockSwitch)
 assertEq(AHF.db.locked, true, "switch locks")
 lockSwitch.__scripts.OnClick(lockSwitch)
 assertEq(AHF.db.locked, false, "and unlocks")
+local wide = findTip("Wide (1300 × 620)")
+wide.__scripts.OnClick(wide)
+assertEq(AHF.db.width, 1300, "Wide preset width")
+assertEq(AHF.db.height, 620, "Wide preset height")
+local tall = findTip("Tall (1000 × 880)")
+tall.__scripts.OnClick(tall)
+assertEq(f:GetHeight(), 880, "Tall preset applied")
+local compact = findTip("Compact (800 × 538)")
+compact.__scripts.OnClick(compact)
+assertEq(f:GetWidth(), 800, "Compact: Blizzard's size")
+AHF.grip.__scripts.OnDoubleClick(AHF.grip)
+assertEq(AHF.db.width, 1000, "double-click the grip: default width")
+assertEq(AHF.db.height, 620, "and height")
+local markSwitch = findTip("Red text for items you can't use")
+markSwitch.__scripts.OnClick(markSwitch)
+assertEq(AHF.db.markUnusable, false, "red text switch off")
+markSwitch.__scripts.OnClick(markSwitch)
+assertEq(AHF.db.markUnusable, true, "and on")
 findTip("Width"):SetValue(1300)
 assertEq(AHF.db.width, 1300, "width slider")
 assertEq(f:GetWidth(), 1300, "applied at once")
@@ -650,6 +715,30 @@ assertEq(resetAll:GetFontString():GetText(), "Reset to default", "confirmation e
 AHF:ToggleConfig()
 assertEq(win:IsShown(), false, "toggles closed")
 
+step("copy columns from another character")
+local me = "Tyler - Forever"
+assert(AHF.db.characters[me], "this character remembered at login")
+local copyBtn = findTip("Copy from another character")
+copyBtn.__scripts.OnClick(copyBtn)
+assert(MENUS[#MENUS].title:find("No other characters"), "nothing to copy yet")
+AHF:SetColumnShown("browse", "Available", false)
+fire("PLAYER_LOGOUT")
+assertEq(AHF.db.characters[me].columns.browse.hidden.Available, true, "saved at logout")
+AHF.db.characters["Alt - Forever"] = { columns = { browse = { widths = { Price = 200 }, hidden = {}, order = { "Name", "Price" } } } }
+AHF.db.characters["Empty - Forever"] = { columns = {} }
+assertEq(table.concat(AHF:OtherCharacters(), ","), "Alt - Forever", "others with columns set up, not this one")
+copyBtn.__scripts.OnClick(copyBtn)
+local copyMenu = MENUS[#MENUS]
+assertEq(copyMenu.entries[1].text, "Alt - Forever", "offered")
+copyMenu.entries[1].fn()
+assertEq(list.tableBuilder:Names(), "Name,Available,Price,*", "Alt's order (Price after Name), Available shown again")
+assertEq(list.tableBuilder:Width("Price"), 200, "Alt's width")
+AHF.db.characters["Alt - Forever"].columns.browse.widths.Price = 250
+assertEq(AHF.charDB.columns.browse.widths.Price, 200, "a copy, not shared")
+assertEq(AHF.db.characters[me].columns.browse.widths.Price, 200, "this character's saved copy updated")
+AHF:ResetColumns()
+assertEq(list.tableBuilder:Names(), "Price,Name,Available,*", "reset again")
+
 step("settings in the Auction House's own tab")
 local tabB = AHF.tab
 assert(tabB, "AH Forever tab")
@@ -692,6 +781,17 @@ SlashCmdList.AUCTIONHOUSEFOREVER("debug")
 local dbg = false
 for _, l in ipairs(LOG) do if l:find("LibAHTab) shown=true", 1, true) then dbg = true end end
 assert(dbg, "/ahf debug reports the tab")
+local rep = AuctionHouseForeverReport
+assert(rep and rep:IsShown(), "/ahf debug opens the report window")
+local rtext = rep.edit:GetText()
+assert(rtext:find("Game: 1.60.1", 1, true), "report: game version")
+assert(rtext:find("LibAHTab) shown=true", 1, true), "report: tab")
+assert(rtext:find("Other Auction House addons: Auctionator 1.2.3", 1, true), "report: Auctionator and its version")
+assert(not rtext:find("Details", 1, true), "report: other addons left out")
+assert(not rtext:find("TradeSkillMaster", 1, true), "report: addons not loaded left out")
+rep.edit.__scripts.OnTextChanged(rep.edit, true)
+assertEq(rep.edit:GetText(), rtext, "the report can't be typed over")
+rep:Hide()
 
 step("Interface Options button")
 local panel = AHF.settingsPanel
@@ -751,6 +851,12 @@ assertEq(AHF.PrepareSettings({ rowTextScale = 175 }).rowTextScale, 175, "row tex
 assertEq(AHF.PrepareSettings({ rowTextScale = 130 }).rowTextScale, 100, "unknown row text size")
 assertEq(AHF.PrepareSettings({ categoryTextScale = 125 }).categoryTextScale, 125, "category text size kept")
 assertEq(AHF.PrepareSettings({ rowFontSize = 16 }).rowFontSize, nil, "1.2 point sizes dropped")
+assertEq(AHF.PrepareSettings({ browseSort = { kind = "price" } }).browseSort, nil, "unknown sort dropped")
+assertEq(AHF.PrepareSettings({ browseSort = "ilvl" }).browseSort, nil, "broken sort dropped")
+assertEq(AHF.PrepareSettings({ browseSort = { kind = "ilvl", reverse = 1 } }).browseSort.reverse, false, "sort kept, reverse fixed")
+local chars = AHF.PrepareSettings({ characters = { ["A - R"] = { columns = {} }, ["B - R"] = 5, ["C - R"] = {} } }).characters
+assert(chars["A - R"] and not chars["B - R"] and not chars["C - R"], "broken characters dropped")
+assertEq(type(AHF.PrepareSettings({ characters = "x" }).characters), "table", "characters made")
 
 step("never buys, bids or posts")
 assertEq(#PURCHASES, 0, "no auction actions")
