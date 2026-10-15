@@ -24,7 +24,7 @@ An addon for **World of Warcraft: Forever** (interface 16001, client 1.60.x) tha
 - `Media/logo.tga` — 128×128, 32-bit TGA with alpha: a gold coin and a gavel in the gold ring, the same medallion style as the other Forever addons. Used through `Theme.LOGO` everywhere. Sources in `art/` (not shipped): `icon.svg` (the medallion), `logo.svg` (the framed logo with the name on a banner) and `logo.png` (1024×1024, for the CurseForge project icon and the README). Re-export `Media/logo.tga` from `icon.svg` if the logo changes.
 - `tests/` — offline test suite (not shipped). `render.lua` / `render.py` draw the windows for a visual check. `wowstub.lua` fakes the WoW API and the parts of the Auction House the addon touches (`FakeAuctionHouse()`, a table builder with Blizzard's width math); `run_tests.lua` holds the scenarios; `run.lua` runs them.
 - `CHANGELOG.md` — release notes shown on CurseForge. Newest version at the top.
-- `CURSEFORGE.md` — the CurseForge project description, pasted by hand (not shipped).
+- `CURSEFORGE.md` — the CurseForge project description, pasted by hand (not shipped). Kept general; release details go in `CHANGELOG.md`.
 - `.pkgmeta` — packager config (folder name, changelog, files to leave out of the download).
 - `.github/workflows/test.yml` — runs the tests on every push. `release.yml` — on a `v*` tag, runs the tests, checks the project ID, then packages and uploads to CurseForge (needs the `CF_API_KEY` secret). `add-to-project.yml` — adds new issues to the project board (needs the `ADD_TO_PROJECT_PAT` secret).
 
@@ -73,7 +73,7 @@ Things only testable in game: the real frame names on Forever's client (`/fstack
 ## Releasing
 
 1. Make the change, run the tests, add a new section at the top of `CHANGELOG.md` (e.g. `## 1.0.1`), and add the matching entry at the top of `News.lua`.
-   If the change shows on the CurseForge project page (features, options, commands), update `CURSEFORGE.md` too (the README, adjusted: no logo, a short install note, full links), and **give the whole updated file in the reply as one Markdown code block**, ready to paste into the project's description (Edit project → Description, Markdown editor). Do this every time the file changes, without being asked. The packager only uploads `CHANGELOG.md` with each file; the description never changes on its own.
+   `CURSEFORGE.md` is a short, general description that points to the Changelog, so it doesn't change with each release. Only update it (and give Tyler the whole file to paste into Edit project → Description) if the addon's main purpose or a headline feature changes.
 2. Commit and push to `main`. The **Tests** workflow must be green.
 3. Tag and push the tag: `git tag v1.0.1 && git push origin v1.0.1`. Push a tag only once: pushing it again uploads a second file. Tags containing `beta` or `alpha` upload as Beta/Alpha files.
 4. The **Package and release** workflow runs the tests again, then uploads to CurseForge. Check the Actions tab for a green check and the CurseForge Files page (new files go through CurseForge review).
