@@ -91,11 +91,27 @@ local function BuildWindowTab(p)
     FlatSlider(size, "Height", 12, -76, sw, "height", function(v) AHF:SetSize(AHF.db.width, v) end,
         "How tall the Auction House is. Taller shows more rows in every list.")
     -- Scale is saved as a factor (1.25) and shown as a percentage (125%)
-    local scale = T.Slider(size, "Scale", COL2, -30, sw,
-        function() return math.floor(AHF.db.scale * 100 + 0.5) end,
-        function(v) AHF:SetScale(v / 100) end,
+    -- Applied when the slider is let go: inside the Auction House the slider
+    -- grows with it, so scaling while dragging would move it under the mouse
+    local pending
+    local scale
+    scale = T.Slider(size, "Scale", COL2, -30, sw,
+        function() return pending or math.floor(AHF.db.scale * 100 + 0.5) end,
+        function(v)
+            if scale and scale.dragging then pending = v else pending = nil; AHF:SetScale(v / 100) end
+        end,
         AHF.LIMITS.scale[1] * 100, AHF.LIMITS.scale[2] * 100, "%", 5)
-    TipAll(scale, "Scale", "The size of everything in the Auction House: text, icons and the window.")
+    scale:HookScript("OnMouseDown", function(self) self.dragging = true end)
+    scale:HookScript("OnMouseUp", function(self)
+        self.dragging = false
+        if pending then
+            local v = pending
+            pending = nil
+            AHF:SetScale(v / 100)
+        end
+    end)
+    TipAll(scale, "Scale", "The size of everything in the Auction House: text, icons and the window. "
+        .. "Changes when you let go of the slider.")
     AddRefresher(scale.Refresh)
     MutedNote(size, "Never bigger than your screen. Blizzard's own size is 800 × 538.", 12, -124)
     local reset = FlatButton(size, "Reset", 54, 18)

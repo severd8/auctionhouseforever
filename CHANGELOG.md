@@ -1,3 +1,8 @@
+## 1.3.5
+
+- Fixed: the window flickered while dragging the **Scale** slider in the AH Forever tab. Scale now changes when you let go of the slider.
+- Scale now goes up to 200%, for small game UI scales.
+
 ## 1.3.4
 
 - Fixed: an error with Auctionator's tabs, and the **AH Forever** tab's place. The tab is now made the same way as Auctionator's (with the LibAHTab library), so it looks like them, sits in line after them, and switches like them.

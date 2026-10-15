@@ -15,7 +15,7 @@ It works alongside Auctionator and other Auction House addons: their tabs, colum
 - **Resizable.** Drag the grip in the bottom right corner. The category list, the results and the tabs stretch with the window, and a taller window shows more rows.
 - **Wider by default.** The window opens 200 pixels wider than Blizzard's, and all of the extra room goes to the Name column.
 - **Movable.** Drag the title bar to put the window anywhere. Lock it in place when you're happy with it.
-- **Scale** the whole window from 60% to 150%.
+- **Scale** the whole window from 60% to 200%.
 - **Column widths.** Drag the line between two column headers to resize a column. Double-click the line for the column's default width. Works on every list (Buy, Sell, Auctions) and on columns added by other addons, like a Median price column. Saved for each character.
 - **Hide, show and reorder columns** with the **Columns** button beside the search box (or the Show & Order tab). Columns from other addons too.
 - **Extra columns**: **iLvl**, **Req Lvl**, **Type** and **Vendor** (click their headers to sort) (green when you could sell it to a vendor for more than the lowest buyout) on the search results; **Per unit** and **Seller** on an item's auctions.
