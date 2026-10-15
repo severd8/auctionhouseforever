@@ -1,3 +1,7 @@
+## 1.3.3
+
+- Fixed: the **AH Forever** tab now sits after Auctionator's tabs instead of between Auctions and Shopping.
+
 ## 1.3.2
 
 - Fixed: the **AH Forever** tab was missing in 1.3.1, and `/ahf` did nothing while the Auction House was open. The tab uses the same template and size as the other tabs, and `/ahf` always opens the settings (as a window if the tab can't show).

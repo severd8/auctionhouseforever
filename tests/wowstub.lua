@@ -398,13 +398,16 @@ function FakeAuctionHouse()
     function box:RegisterCallback(event, fn, owner) self.__callbacks[event] = fn end
     f.CategoriesList.ScrollBox = box
     f.Tabs = {}
+    -- Blizzard's three tabs, and Auctionator's in a container frame of its own
+    local container = newObj("Frame", nil, f)
     for i, name in ipairs({ "Buy", "Sell", "Auctions", "Auctionator" }) do
-        local t = newObj("Button", nil, f)
+        local t = newObj("Button", nil, i <= 3 and f or container)
+        function t:GetHeight() return 32 end
         t.__text = name
         t.__right = 100 * i
         function t:GetRight() return self.__right end
         function t:GetBottom() return 10 end
-        f.Tabs[i] = t
+        if i <= 3 then f.Tabs[i] = t else AUCTIONATOR_TAB = t end
     end
     f.SearchBar = newObj("Frame", nil, f)
     f.SearchBar.FavoritesSearchButton = newObj("Button", nil, f.SearchBar)

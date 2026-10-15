@@ -646,7 +646,7 @@ step("settings in the Auction House's own tab")
 local tabB = AHF.tab
 assert(tabB, "AH Forever tab")
 assertEq(tabB:GetText(), "AH Forever", "tab name")
-assertEq(select(2, tabB:GetPoint(1)), f.Tabs[4], "after the last tab (Auctionator's)")
+assertEq(select(2, tabB:GetPoint(1)), AUCTIONATOR_TAB, "after the last tab (Auctionator's, in its own frame)")
 tabB.__scripts.OnClick(tabB)
 assert(AHF.tabPanel:IsShown(), "tab shows its panel")
 assertEq(win:GetParent(), AHF.tabPanel, "settings inside the Auction House")

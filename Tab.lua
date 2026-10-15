@@ -24,18 +24,26 @@ end
 local function PlaceTab(f)
     local first = Tabs(f)[1]
     local bottom = first and first:GetBottom()
+    local height = first and first:GetHeight()
     local last, right = first, first and first:GetRight()
+    local fr = f:GetRight()
+    local function Consider(b)
+        if b == tab or not b.GetObjectType or b:GetObjectType() ~= "Button" or not b:IsVisible() then return end
+        local bb, r, h = b:GetBottom(), b:GetRight(), b:GetHeight()
+        if bb and r and math.abs(bb - bottom) < 4 and r > (right or 0)
+            and (not fr or r < fr + 400) and (not h or not height or math.abs(h - height) < 8) then
+            last, right = b, r
+        end
+    end
     if bottom then
-        for _, b in ipairs({ f:GetChildren() }) do
-            if b ~= tab and b.GetObjectType and b:GetObjectType() == "Button" and b:IsShown() then
-                local bb, r, h = b:GetBottom(), b:GetRight(), b:GetHeight()
-                local fr = f:GetRight()
-                if bb and r and math.abs(bb - bottom) < 3 and r > (right or 0)
-                    and (not fr or r < fr + 300) and (not h or math.abs(h - (first:GetHeight() or h)) < 6) then
-                    last, right = b, r
-                end
+        -- Auctionator keeps its tabs in a frame of its own: look one level down too
+        for _, child in ipairs({ f:GetChildren() }) do
+            Consider(child)
+            if child.GetChildren and child ~= panel then
+                for _, grand in ipairs({ child:GetChildren() }) do Consider(grand) end
             end
         end
+        for _, b in ipairs(Tabs(f)) do Consider(b) end
     end
     tab:ClearAllPoints()
     if last then tab:SetPoint("LEFT", last, "RIGHT", -15, 0)
@@ -49,6 +57,7 @@ local function PlaceSoon(f)
     if C_Timer and C_Timer.After then
         C_Timer.After(0, function() PlaceTab(f) end)
         C_Timer.After(0.5, function() PlaceTab(f) end)
+        C_Timer.After(2, function() PlaceTab(f) end)
     end
 end
 
