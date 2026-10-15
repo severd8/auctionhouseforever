@@ -89,6 +89,10 @@ AuctionHouse Forever is free. If it saves you some squinting at the Auction Hous
 - **Outfitter Forever**: the classic Outfitter gear manager, ported to WoW Forever. Free on CurseForge.
 - **BattleText Forever**: scrolling combat text for your hits, heals and the damage you take. Free on CurseForge.
 
+## Credits
+
+The Auction House tab uses **LibAHTab** by plusmouse (MIT licence, included in `Libs/LibAHTab`) and **LibStub** (public domain).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

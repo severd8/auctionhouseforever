@@ -1,4 +1,5 @@
 -- Minimal WoW API stub for exercising AuctionHouse Forever outside the game.
+strmatch = string.match
 -- Methods (CamelCase keys) default to no-ops; lowercase fields read as nil like real frames.
 -- Also fakes the parts of Blizzard_AuctionHouseUI the addon touches: AuctionHouseFrame,
 -- its category list and its item lists with a table builder (FakeAuctionHouse()).
@@ -59,6 +60,7 @@ function Methods:SetFont(f, size, flags) self.__fontset = { f, size, flags } end
 function Methods:GetChildren() local r = {} for _, c in ipairs(self.__children) do if c.__kind ~= "Texture" and c.__kind ~= "FontString" then r[#r + 1] = c end end return unpack(r) end
 function Methods:GetRegions() local r = {} for _, c in ipairs(self.__children) do if c.__kind == "Texture" or c.__kind == "FontString" then r[#r + 1] = c end end return unpack(r) end
 function Methods:GetObjectType() return self.__kind end
+function Methods:IsObjectType(t) return t == "Frame" or t == self.__kind end
 function Methods:GetName() return self.__name end
 function Methods:GetParent() return self.__parent end
 function Methods:SetParent(p) self.__parent = p end
@@ -407,7 +409,12 @@ function FakeAuctionHouse()
         t.__right = 100 * i
         function t:GetRight() return self.__right end
         function t:GetBottom() return 10 end
-        if i <= 3 then f.Tabs[i] = t else AUCTIONATOR_TAB = t end
+        if i <= 3 then
+            f.Tabs[i] = t
+            t:SetScript("OnClick", function() f:SetDisplayMode(name) end)   -- like Blizzard's tabs
+        else
+            AUCTIONATOR_TAB = t
+        end
     end
     f.SearchBar = newObj("Frame", nil, f)
     f.SearchBar.FavoritesSearchButton = newObj("Button", nil, f.SearchBar)

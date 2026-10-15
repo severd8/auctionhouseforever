@@ -1,3 +1,7 @@
+## 1.3.4
+
+- Fixed: an error with Auctionator's tabs, and the **AH Forever** tab's place. The tab is now made the same way as Auctionator's (with the LibAHTab library), so it looks like them, sits in line after them, and switches like them.
+
 ## 1.3.3
 
 - Fixed: the **AH Forever** tab now sits after Auctionator's tabs instead of between Auctions and Shopping.

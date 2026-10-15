@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "1.3.4", date = "2026-10-15", items = {
+        "The AH Forever tab is made like Auctionator's: same look, in line after them, no error.",
+    } },
     { version = "1.3.3", date = "2026-10-15", items = {
         "Fixed: the AH Forever tab sits after Auctionator's tabs.",
     } },

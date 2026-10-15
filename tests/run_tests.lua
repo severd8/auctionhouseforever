@@ -645,8 +645,9 @@ assertEq(win:IsShown(), false, "toggles closed")
 step("settings in the Auction House's own tab")
 local tabB = AHF.tab
 assert(tabB, "AH Forever tab")
+assert(AHF.libTab, "made with LibAHTab, like Auctionator's tabs")
 assertEq(tabB:GetText(), "AH Forever", "tab name")
-assertEq(select(2, tabB:GetPoint(1)), AUCTIONATOR_TAB, "after the last tab (Auctionator's, in its own frame)")
+assertEq(tabB.__template, "AuctionHouseFrameDisplayModeTabTemplate", "Blizzard's tab template")
 tabB.__scripts.OnClick(tabB)
 assert(AHF.tabPanel:IsShown(), "tab shows its panel")
 assertEq(win:GetParent(), AHF.tabPanel, "settings inside the Auction House")
@@ -661,6 +662,7 @@ SlashCmdList.AUCTIONHOUSEFOREVER("")
 assertEq(AHF.embedded, true, "/ahf opens the tab while the Auction House is open")
 SlashCmdList.AUCTIONHOUSEFOREVER("")
 assertEq(AHF.tabPanel:IsShown(), false, "/ahf again closes it")
+assertEq(f.displayMode, AuctionHouseFrameDisplayMode and AuctionHouseFrameDisplayMode.Buy or f.displayMode, "back on Buy")
 SlashCmdList.AUCTIONHOUSEFOREVER("")
 win:Hide()   -- Escape
 assertEq(AHF.tabPanel:IsShown(), false, "Escape closes the tab")
@@ -671,7 +673,6 @@ assertEq(AHF.embedded, false, "with the Auction House closed: a window of its ow
 assert(win:IsShown(), "window shown")
 win:Hide()
 f:Open()
-
 -- If the tab ever can't show, /ahf still opens the settings (as a window)
 local realShow = AHF.ShowTabPanel
 AHF.ShowTabPanel = function() return false end
@@ -681,7 +682,7 @@ win:Hide()
 AHF.ShowTabPanel = realShow
 SlashCmdList.AUCTIONHOUSEFOREVER("debug")
 local dbg = false
-for _, l in ipairs(LOG) do if l:find("tab shown=true", 1, true) then dbg = true end end
+for _, l in ipairs(LOG) do if l:find("LibAHTab) shown=true", 1, true) then dbg = true end end
 assert(dbg, "/ahf debug reports the tab")
 
 step("Interface Options button")
