@@ -433,11 +433,8 @@ function AHF:DefaultColumnWidth(listKey, name)
     return defaults[listKey] and defaults[listKey][name]
 end
 
--- Every list back to Blizzard's columns: widths, all shown, Blizzard's order
-function AHF:ResetColumns()
-    for _, state in pairs(self.charDB.columns) do
-        state.widths, state.hidden, state.order = {}, {}, {}
-    end
+-- Every list's columns from Blizzard's widths, then the saved settings on top
+local function RearrangeAll(self)
     for _, entry in ipairs(entries) do
         local cols = Columns(entry)
         if cols then
@@ -449,6 +446,24 @@ function AHF:ResetColumns()
         end
     end
     self:RefreshOptions()
+end
+
+-- Every list back to Blizzard's columns: widths, all shown, Blizzard's order
+function AHF:ResetColumns()
+    for _, state in pairs(self.charDB.columns) do
+        state.widths, state.hidden, state.order = {}, {}, {}
+    end
+    RearrangeAll(self)
+end
+
+-- Replaces this character's columns (every list) with another character's
+function AHF:CopyColumnsFrom(who)
+    local saved = self.db.characters[who]
+    if not saved then return false end
+    self.charDB.columns = self.PrepareCharSettings({ columns = self.DeepCopy(saved.columns) }).columns
+    RearrangeAll(self)
+    self:RememberCharacter()
+    return true
 end
 
 -- How many column widths are saved (for the settings window)

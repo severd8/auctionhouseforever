@@ -27,6 +27,7 @@ AHF.EXTRA_COLUMNS = {
 local ours = setmetatable({}, { __mode = "k" })   -- our column objects
 local CELL_PADDING = 10                            -- Blizzard's STANDARD_PADDING
 local DEAL = { 0.25, 1, 0.25 }                     -- vendor pays more than the lowest buyout
+local RED = { 1, 0.13, 0.13 }                      -- an item you can't use (the game's red)
 
 function AHF:DefaultHidden(key, name)
     for _, def in ipairs(self.EXTRA_COLUMNS[key] or {}) do
@@ -65,6 +66,60 @@ local function Equippable(id, inst)
     return inst and inst.equipLoc ~= nil and inst.equipLoc ~= ""
 end
 
+---------------------------------------------------------------------------
+-- Can the player use an item? The game's tooltip shows what stops you in red
+-- (level, armour or weapon skill, class, profession), so a red line below the
+-- name means no. Kept per item until the player levels or learns something.
+---------------------------------------------------------------------------
+local usable = {}
+
+local function IsRed(c)
+    if type(c) ~= "table" then return false end
+    local r, g, b = c.r, c.g, c.b
+    if c.GetRGB then r, g, b = c:GetRGB() end
+    return type(r) == "number" and type(g) == "number" and type(b) == "number"
+        and r > 0.9 and g < 0.25 and b < 0.25
+end
+
+local function PlayerLevel()
+    local lvl = UnitLevel and UnitLevel("player")
+    return type(lvl) == "number" and lvl or nil
+end
+
+-- true, false, or nil (not known yet, or the game can't say)
+function AHF:CanUse(id)
+    if type(id) ~= "number" then return nil end
+    if usable[id] ~= nil then return usable[id] end
+    local info = ItemInfo(id)
+    if not info then return nil end
+    local get = C_TooltipInfo and C_TooltipInfo.GetItemByID
+    local result
+    if get then
+        local ok, data = pcall(get, id)
+        local lines = ok and type(data) == "table" and data.lines
+        if type(lines) ~= "table" or #lines < 2 then return nil end   -- not loaded yet
+        result = true
+        for i = 2, #lines do
+            local line = lines[i]
+            if type(line) == "table" and (IsRed(line.leftColor) or IsRed(line.rightColor)) then
+                result = false
+                break
+            end
+        end
+    else
+        -- No tooltip data: only the level can be checked
+        local lvl = PlayerLevel()
+        if not lvl then return nil end
+        result = not (type(info.req) == "number" and info.req > lvl)
+    end
+    usable[id] = result
+    return result
+end
+
+local function Unusable(id)
+    return AHF.db and AHF.db.markUnusable and AHF:CanUse(id) == false
+end
+
 local function Money(copper)
     if type(copper) ~= "number" or copper <= 0 then return "" end
     copper = math.floor(copper)
@@ -91,17 +146,21 @@ function TEXT.ilvl(row)
         local info = ItemInfo(id)
         lvl = info and info.ilvl
     end
-    return (type(lvl) == "number" and lvl > 0) and tostring(lvl) or ""
+    if type(lvl) ~= "number" or lvl <= 0 then return "" end
+    return tostring(lvl), Unusable(id) and RED or nil
 end
 
 function TEXT.req(row)
     local info = ItemInfo((KeyID(row)))
     local req = info and info.req
-    return (type(req) == "number" and req > 1) and tostring(req) or ""
+    if type(req) ~= "number" or req <= 1 then return "" end
+    local lvl = PlayerLevel()
+    local high = AHF.db and AHF.db.markUnusable and lvl and req > lvl
+    return tostring(req), high and RED or nil
 end
 
-function TEXT.type(row)
-    local inst = ItemInstant((KeyID(row)))
+local function TypeText(id)
+    local inst = ItemInstant(id)
     if not inst then return "" end
     local slot = inst.equipLoc and inst.equipLoc ~= "" and _G[inst.equipLoc]
     if type(slot) ~= "string" then slot = nil end
@@ -112,6 +171,13 @@ function TEXT.type(row)
         return inst.subType .. " " .. slot
     end
     return inst.subType or inst.itemType or ""
+end
+
+function TEXT.type(row)
+    local id = KeyID(row)
+    local text = TypeText(id)
+    if text == "" then return "" end
+    return text, Unusable(id) and RED or nil
 end
 
 function TEXT.vendor(row)
@@ -240,11 +306,25 @@ function SORT_VALUE.vendor(row)
     local info = ItemInfo((KeyID(row)))
     return info and type(info.sell) == "number" and info.sell or -1
 end
-SORT_VALUE.type = function(row) return (AHF:CellText("type", row)) or "" end
+SORT_VALUE.type = function(row) return TypeText((KeyID(row))) end
+
+-- The sort on our columns, saved until one of Blizzard's headers is clicked;
+-- none while its column is hidden
+function AHF:BrowseSort()
+    local sort = self.db and self.db.browseSort
+    if not sort then return nil end
+    for _, def in ipairs(self.EXTRA_COLUMNS.browse or {}) do
+        if def.kind == sort.kind then
+            if self:IsColumnHidden("browse", def.name) then return nil end
+            return sort
+        end
+    end
+    return nil
+end
 
 function AHF:SortBrowseResults()
     local brf = self.frame and self.frame.BrowseResultsFrame
-    local sort = self.browseSort
+    local sort = self:BrowseSort()
     local results = brf and brf.browseResults
     if not sort or type(results) ~= "table" or #results < 2 then return end
     local fn = SORT_VALUE[sort.kind]
@@ -271,7 +351,7 @@ function AHF:UpdateSortArrows()
     local entry
     for _, e in ipairs(self.columnEntries or {}) do if e.key == "browse" then entry = e end end
     if not entry then return end
-    local sort = self.browseSort
+    local sort = self:BrowseSort()
     for _, b in ipairs(entry.sortButtons or {}) do
         local arrow = b:IsShown() and b.header and type(b.header.Arrow) == "table" and b.header.Arrow
         if arrow then
@@ -299,17 +379,18 @@ local function MakeSortButton(parent)
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.08)
     b:SetScript("OnClick", function(self)
-        local sort = AHF.browseSort
+        local sort = AHF:BrowseSort()
         if sort and sort.kind == self.kind then
             sort.reverse = not sort.reverse
         else
-            AHF.browseSort = { kind = self.kind, reverse = false }
+            AHF.db.browseSort = { kind = self.kind, reverse = false }
         end
         AHF:SortBrowseResults()
         AHF:UpdateSortArrows()
     end)
     ns.Theme.Tooltip(b, "Sort", "Click to sort the results by this column; click again to reverse. "
-        .. "Sorts the results loaded so far (more load as you scroll).")
+        .. "Sorts the results loaded so far (more load as you scroll). Kept for every search until you "
+        .. "click one of the game's own headers.")
     return b
 end
 
@@ -348,15 +429,19 @@ function AHF:SetupSorting(f)
     end
     if type(brf.SetSortOrder) == "function" then
         hooksecurefunc(brf, "SetSortOrder", function()
-            AHF.browseSort = nil
+            AHF.db.browseSort = nil
             AHF:UpdateSortArrows()
         end)
+    end
+    -- A new search shows the arrow on the game's own sorted header again
+    if type(brf.UpdateHeaders) == "function" then
+        hooksecurefunc(brf, "UpdateHeaders", function() AHF:UpdateSortArrows() end)
     end
 end
 
 -- Fills in cells that were waiting for an item's info
 local function RefreshExtraCells()
-    if AHF.browseSort then AHF:SortBrowseResults() end
+    if AHF:BrowseSort() then AHF:SortBrowseResults() end
     for _, entry in ipairs(AHF.columnEntries or {}) do
         local tb = entry.list.tableBuilder
         for _, col in ipairs(tb and tb:GetColumns() or {}) do
@@ -370,12 +455,28 @@ local function RefreshExtraCells()
 end
 AHF.RefreshExtraCells = RefreshExtraCells
 
+function AHF:SetMarkUnusable(on)
+    self.db.markUnusable = on and true or false
+    RefreshExtraCells()
+    self:RefreshOptions()
+end
+
+-- What can be used changes with the player's level, skills and spells
+local RELEARN = { PLAYER_LEVEL_UP = true, SKILL_LINES_CHANGED = true, LEARNED_SPELL_IN_TAB = true,
+    LEARNED_SPELL_IN_SKILL_LINE = true, NEW_RECIPE_LEARNED = true }
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+-- Not every client has all of them; an unknown event is an error
+for event in pairs(RELEARN) do pcall(events.RegisterEvent, events, event) end
 local queued = false
-events:SetScript("OnEvent", function(_, _, id)
-    if not waiting[id] then return end
-    waiting[id] = nil
+events:SetScript("OnEvent", function(_, event, id)
+    if RELEARN[event] then
+        for k in pairs(usable) do usable[k] = nil end
+    else
+        if not waiting[id] then return end
+        waiting[id] = nil
+    end
     if queued then return end
     queued = true
     local function run() queued = false; RefreshExtraCells() end

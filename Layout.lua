@@ -295,7 +295,14 @@ function AHF:SetupLayout(f)
         end
         AHF:SetSize(f:GetWidth() or AHF.db.width, f:GetHeight() or AHF.db.height)
     end)
-    T.Tooltip(grip, "Resize", "Drag to make the Auction House bigger or smaller. Taller shows more rows.")
+    -- Double-click: the default size (the top left corner stays put)
+    grip:SetScript("OnDoubleClick", function()
+        AHF.sizing = false
+        f:StopMovingOrSizing()
+        AHF:SetSize(AHF.DEFAULTS.width, AHF.DEFAULTS.height)
+    end)
+    T.Tooltip(grip, "Resize", "Drag to make the Auction House bigger or smaller. Taller shows more rows. "
+        .. "Double-click for the default size.")
     self.grip = grip
 
     -- Title bar: drag to move (only takes the mouse while unlocked)

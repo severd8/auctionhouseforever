@@ -165,17 +165,39 @@ function RunTimers()
 end
 function CreateColor(r, g, b, a) return { r = r, g = g, b = b, a = a } end
 AH_LOADED = false
-C_AddOns = {
-    GetAddOnMetadata = function() return "@project-version@" end,
-    IsAddOnLoaded = function(name) return name == "Blizzard_AuctionHouseUI" and AH_LOADED end,
+-- Installed addons: { name, title, loaded, version }
+FAKE_ADDONS = {
+    { "AuctionHouseForever", "AuctionHouse Forever", true },
+    { "Auctionator", "Auctionator", true, "1.2.3" },
+    { "Details", "Details! Damage Meter", true },
+    { "TradeSkillMaster", "TradeSkillMaster", false },
 }
+C_AddOns = {
+    GetAddOnMetadata = function(name, field)
+        for _, a in ipairs(FAKE_ADDONS) do if a[1] == name and field == "Version" and a[4] then return a[4] end end
+        return "@project-version@"
+    end,
+    IsAddOnLoaded = function(name)
+        if name == "Blizzard_AuctionHouseUI" then return AH_LOADED end
+        for _, a in ipairs(FAKE_ADDONS) do if a[1] == name then return a[3] end end
+        return false
+    end,
+    GetNumAddOns = function() return #FAKE_ADDONS end,
+    GetAddOnInfo = function(i) local a = FAKE_ADDONS[i] return a[1], a[2] end,
+}
+function GetBuildInfo() return "1.60.1", "12345", "Oct 1 2026", 16001 end
+PLAYER_NAME, PLAYER_LEVEL = "Tyler", 30
+function UnitName() return PLAYER_NAME end
+function GetRealmName() return "Forever" end
+function UnitLevel() return PLAYER_LEVEL end
 UISpecialFrames = {}
 SlashCmdList = {}
 MENUS = {}
 MenuUtil = { CreateContextMenu = function(owner, builder)
     local root = { entries = {} }
-    function root:CreateTitle() end
+    function root:CreateTitle(t) self.title = t end
     function root:CreateRadio(t, get, set) table.insert(self.entries, { text = t, get = get, fn = set }) end
+    function root:CreateButton(t, fn) table.insert(self.entries, { text = t, fn = fn }) end
     builder(owner, root)
     MENUS[#MENUS + 1] = root
 end }
@@ -426,6 +448,12 @@ function FakeAuctionHouse()
         if added then for _, r in ipairs(added) do table.insert(self.browseResults, r) end end
     end
     function f.BrowseResultsFrame:SetSortOrder(order) self.sortOrder = order end
+    -- Like Blizzard's: each search shows the arrow on the game's sorted header (Price)
+    function f.BrowseResultsFrame:UpdateHeaders()
+        local tb = self.ItemList.tableBuilder
+        local price = tb and tb:Column("Price")
+        if price and price.header and price.header.Arrow then price.header.Arrow:Show() end
+    end
     f.ItemBuyFrame = newObj("Frame", nil, f)
     f.ItemBuyFrame.ItemList = NewItemList(f.ItemBuyFrame, function(tb)
         tb:AddTestColumn("Bid", 140, nil, 0)

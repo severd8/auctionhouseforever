@@ -37,6 +37,7 @@ AHF.DEFAULTS = {
     categoryTextScale = 100,  -- text size in the category list, % of the game's own
     showSplash = true,
     lastSeenVersion = "",
+    markUnusable = true,      -- red iLvl, Req Lvl and Type for items you can't use
 }
 
 -- Allowed range of every number setting
@@ -53,6 +54,13 @@ AHF.TEXT_SCALES = { 100, 110, 125, 150, 175, 200 }   -- the row text size choice
 AHF.CATEGORY_TEXT_SCALES = { 100, 110, 125, 150 }   -- the category list is narrow: smaller choices
 AHF.CATEGORY_HEIGHT = 21   -- Blizzard's category button height
 AHF.ROW_HEIGHT = 20   -- Blizzard's row height; rows grow with bigger text (RowHeight)
+AHF.SORT_KINDS = { ilvl = true, req = true, vendor = true, type = true }   -- our sortable columns
+-- One-click sizes on the Window tab (never bigger than the screen)
+AHF.SIZE_PRESETS = {
+    { label = "Compact", width = AHF.BLIZZARD_WIDTH, height = AHF.BLIZZARD_HEIGHT, tip = "Blizzard's own size." },
+    { label = "Wide",    width = 1300, height = 620, tip = "Room for long names and extra columns." },
+    { label = "Tall",    width = 1000, height = 880, tip = "More rows in every list." },
+}
 
 -- Is v one of the text size choices?
 function AHF.ValidTextScale(v)
@@ -108,6 +116,15 @@ local function PrepareSettings(db)
         if not ok then db[key] = 100 end
     end
     db.rowFontSize, db.categoryFontSize = nil, nil   -- 1.2.x point sizes, replaced by percentages
+    -- The sort on our columns: { kind =, reverse = } or nil (the game's sort)
+    local sort = db.browseSort
+    if sort ~= nil and not (type(sort) == "table" and AHF.SORT_KINDS[sort.kind]) then db.browseSort = nil end
+    if db.browseSort then db.browseSort.reverse = db.browseSort.reverse == true end
+    -- Each character's columns, to copy to another: { ["Name - Realm"] = { columns = { ... } } }
+    if type(db.characters) ~= "table" then db.characters = {} end
+    for who, c in pairs(db.characters) do
+        if type(who) ~= "string" or type(c) ~= "table" or type(c.columns) ~= "table" then db.characters[who] = nil end
+    end
     db.schema = AHF.SCHEMA
     return db
 end
@@ -156,6 +173,50 @@ function AHF:ColumnState(listKey)
     return state
 end
 
+local function DeepCopy(t)
+    if type(t) ~= "table" then return t end
+    local c = {}
+    for k, v in pairs(t) do c[k] = DeepCopy(v) end
+    return c
+end
+AHF.DeepCopy = DeepCopy
+
+-- "Name - Realm" of the character playing, or nil before it's known
+function AHF:CharacterKey()
+    local name = UnitName and UnitName("player")
+    local realm = GetRealmName and GetRealmName()
+    if type(name) ~= "string" or name == "" or name == UNKNOWNOBJECT then return nil end
+    return name .. ((type(realm) == "string" and realm ~= "") and (" - " .. realm) or "")
+end
+
+-- Keeps a copy of this character's columns in the account settings, so other
+-- characters can copy them (per-character settings can't be read from another)
+function AHF:RememberCharacter()
+    local key = self.db and self.charDB and self:CharacterKey()
+    if key then self.db.characters[key] = { columns = DeepCopy(self.charDB.columns) } end
+end
+
+local function HasColumnSettings(columns)
+    for _, state in pairs(columns) do
+        if type(state) == "table" then
+            for _, part in ipairs({ "widths", "hidden", "order" }) do
+                if type(state[part]) == "table" and next(state[part]) ~= nil then return true end
+            end
+        end
+    end
+    return false
+end
+
+-- Other characters whose columns can be copied, sorted by name
+function AHF:OtherCharacters()
+    local me, list = self:CharacterKey(), {}
+    for who, c in pairs(self.db.characters) do
+        if who ~= me and HasColumnSettings(c.columns) then list[#list + 1] = who end
+    end
+    table.sort(list)
+    return list
+end
+
 function AHF:Version()
     local v = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version")
     if type(v) ~= "string" or v:find("@") then return nil end
@@ -181,6 +242,7 @@ function AHF:ResetAll()
     for k, v in pairs(self.DEFAULTS) do
         if k ~= "showSplash" and k ~= "lastSeenVersion" then db[k] = v end
     end
+    db.browseSort = nil
     self:ResetPosition()
     self:ResetColumns()
     self:ApplyRowFonts()
@@ -220,7 +282,7 @@ AHF.COMMANDS = {
     { "/ahf reset", "size, position and scale back to the defaults" },
     { "/ahf columns", "every column shown, default order and widths" },
     { "/ahf news", "show the welcome / what's new window" },
-    { "/ahf debug", "version and tab details, for bug reports" },
+    { "/ahf debug", "details to copy into a bug report" },
 }
 
 local function Help()
@@ -246,6 +308,7 @@ SlashCmdList.AUCTIONHOUSEFOREVER = function(msg)
         Print("columns reset: all shown, default order and widths.")
     elseif msg == "debug" then
         Print("version " .. tostring(AHF:Version()) .. "; " .. (AHF.TabDebug and AHF:TabDebug() or "no tab code"))
+        if AHF.ShowReport then AHF:ShowReport() end
     elseif msg == "news" then
         AHF:ToggleSplash()
     else
@@ -259,6 +322,7 @@ end
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
+events:RegisterEvent("PLAYER_LOGOUT")
 events:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == ADDON then
@@ -273,7 +337,10 @@ events:SetScript("OnEvent", function(_, event, arg1)
         end
     elseif event == "PLAYER_LOGIN" then
         if AuctionHouseLoaded() then AHF:OnAuctionHouseLoaded() end
+        AHF:RememberCharacter()
         AHF:RegisterSettingsCategory()
         AHF:MaybeShowSplash()
+    elseif event == "PLAYER_LOGOUT" then
+        AHF:RememberCharacter()
     end
 end)
