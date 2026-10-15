@@ -1,3 +1,8 @@
+## 1.3.2
+
+- Fixed: the **AH Forever** tab was missing in 1.3.1, and `/ahf` did nothing while the Auction House was open. The tab uses the same template and size as the other tabs, and `/ahf` always opens the settings (as a window if the tab can't show).
+- New: `/ahf debug` shows the version and where the tab is, to help with bug reports.
+
 ## 1.3.1
 
 - Fixed: category text grew bigger every time the list redrew, and wouldn't size back down. Category text now goes up to 150%; a saved 200% goes back to Default.

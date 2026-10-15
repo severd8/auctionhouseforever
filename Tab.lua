@@ -28,8 +28,12 @@ local function PlaceTab(f)
     if bottom then
         for _, b in ipairs({ f:GetChildren() }) do
             if b ~= tab and b.GetObjectType and b:GetObjectType() == "Button" and b:IsShown() then
-                local bb, r = b:GetBottom(), b:GetRight()
-                if bb and r and math.abs(bb - bottom) < 3 and r > (right or 0) then last, right = b, r end
+                local bb, r, h = b:GetBottom(), b:GetRight(), b:GetHeight()
+                local fr = f:GetRight()
+                if bb and r and math.abs(bb - bottom) < 3 and r > (right or 0)
+                    and (not fr or r < fr + 300) and (not h or math.abs(h - (first:GetHeight() or h)) < 6) then
+                    last, right = b, r
+                end
             end
         end
     end
@@ -71,22 +75,23 @@ function AHF:HideTabPanel()
         win:Hide()
         Release(win)
     end
-    if PanelTemplates_DeselectTab then PanelTemplates_DeselectTab(tab) end
-    if PanelTemplates_UpdateTabs and self.frame then PanelTemplates_UpdateTabs(self.frame) end
+    if tab and PanelTemplates_DeselectTab then pcall(PanelTemplates_DeselectTab, tab) end
+    if PanelTemplates_UpdateTabs and self.frame then pcall(PanelTemplates_UpdateTabs, self.frame) end
 end
 
+-- True when the settings are now showing in the tab
 function AHF:ShowTabPanel(page)
     local f = self.frame
-    if not f or not panel then return end
+    if not f or not panel then return false end
     -- Any other tab closes ours
     for _, b in ipairs(Tabs(f)) do
         if not hookedTabs[b] then
             hookedTabs[b] = true
             b:HookScript("OnClick", function() AHF:HideTabPanel() end)
         end
-        if PanelTemplates_DeselectTab then PanelTemplates_DeselectTab(b) end
+        if PanelTemplates_DeselectTab then pcall(PanelTemplates_DeselectTab, b) end
     end
-    if PanelTemplates_SelectTab then PanelTemplates_SelectTab(tab) end
+    if tab and PanelTemplates_SelectTab then pcall(PanelTemplates_SelectTab, tab) end
     panel:Show()
     local win = self:GetConfigWindow()
     win:SetParent(panel)
@@ -103,39 +108,13 @@ function AHF:ShowTabPanel(page)
     self.embedded = true
     win:Show()
     if page and win.pages[page] then win:ShowTab(page) end
+    return true
 end
 
 function AHF:SetupTab(f)
-    if tab then return end
-    -- Blizzard's own Auction House tab, so it looks like the others; older
-    -- clients' version of that template adds itself to AuctionHouseFrame.Tabs,
-    -- so the plain tab templates come first there
-    local b
-    for _, template in ipairs({ "AuctionHouseFrameTabTemplate", "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate" }) do
-        local before = type(f.Tabs) == "table" and #f.Tabs or 0
-        local ok, made = pcall(CreateFrame, "Button", "AuctionHouseForeverTab", f, template)
-        if ok and made then
-            if type(f.Tabs) == "table" and #f.Tabs > before then
-                table.remove(f.Tabs)   -- not one of Blizzard's tabs
-                made:Hide()
-            else
-                b = made
-                break
-            end
-        end
-    end
-    if not b then return end
-    tab = b
-    tab:SetText("AH Forever")
-    if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 10, nil, 70) end
-    if PanelTemplates_DeselectTab then PanelTemplates_DeselectTab(tab) end
-    tab:SetScript("OnClick", function()
-        if PlaySound and SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
-        AHF:ShowTabPanel()
-    end)
-    self.tab = tab
-
-    -- Covers the Auction House's content (below the title, above the tabs)
+    if panel then return end
+    -- Covers the Auction House's content (below the title, above the tabs).
+    -- Made first, so the settings open here even if the tab can't be made.
     panel = CreateFrame("Frame", nil, f)
     panel:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -22)
     panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, 3)
@@ -145,11 +124,48 @@ function AHF:SetupTab(f)
     panel:Hide()
     self.tabPanel = panel
 
-    f:HookScript("OnShow", function() PlaceSoon(f) end)
     f:HookScript("OnHide", function() AHF:HideTabPanel() end)
     if f.SetDisplayMode then hooksecurefunc(f, "SetDisplayMode", function() AHF:HideTabPanel() end) end
     if type(PanelTemplates_SetTab) == "function" then
         hooksecurefunc("PanelTemplates_SetTab", function(frame) if frame == f then AHF:HideTabPanel() end end)
     end
+
+    -- The tab: the same template and size as Blizzard's Auction House tabs
+    -- (PanelTabButtonTemplate, padding 20, at least 70 wide). Not added to
+    -- AuctionHouseFrame.Tabs.
+    local b
+    for _, template in ipairs({ "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate" }) do
+        local ok, made = pcall(CreateFrame, "Button", "AuctionHouseForeverTab", f, template)
+        if ok and made then b = made break end
+        self.tabError = made
+    end
+    if not b then return end
+    tab = b
+    self.tab = tab
+    tab:SetText("AH Forever")
+    local function Resize()
+        if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 20, nil, 70) end
+    end
+    Resize()
+    tab:HookScript("OnShow", Resize)
+    if PanelTemplates_DeselectTab then pcall(PanelTemplates_DeselectTab, tab) end
+    tab:SetScript("OnClick", function()
+        if PlaySound and SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
+        AHF:ShowTabPanel()
+    end)
+    tab:Show()
+    f:HookScript("OnShow", function() PlaceSoon(f) end)
     PlaceSoon(f)
+end
+
+-- /ahf debug: where the tab is
+function AHF:TabDebug()
+    local f = self.frame
+    if not f then return "the Auction House hasn't been opened yet" end
+    if not tab then return "no tab (" .. tostring(self.tabError) .. ")" end
+    local p, rel = tab:GetPoint(1)
+    local relName = type(rel) == "table" and (rel.GetName and rel:GetName() or (rel.GetText and rel:GetText())) or tostring(rel)
+    return ("tab shown=%s visible=%s at %s of %s, left=%s bottom=%s, panel=%s"):format(tostring(tab:IsShown()),
+        tostring(tab:IsVisible()), tostring(p), tostring(relName), tostring(tab:GetLeft()), tostring(tab:GetBottom()),
+        tostring(panel ~= nil))
 end

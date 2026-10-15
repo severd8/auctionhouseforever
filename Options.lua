@@ -377,8 +377,7 @@ function AHF:ToggleConfig(tab)
     -- With the Auction House open, the settings open in its own tab
     if self.frame and self.frame:IsShown() and self.ShowTabPanel then
         if not tab and self.embedded and win:IsShown() then self:HideTabPanel() return end
-        self:ShowTabPanel(tab)
-        return
+        if self:ShowTabPanel(tab) then return end
     end
     if not tab and win:IsShown() then win:Hide() return end
     win:Show()

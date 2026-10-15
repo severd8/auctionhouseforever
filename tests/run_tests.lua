@@ -672,6 +672,18 @@ assert(win:IsShown(), "window shown")
 win:Hide()
 f:Open()
 
+-- If the tab ever can't show, /ahf still opens the settings (as a window)
+local realShow = AHF.ShowTabPanel
+AHF.ShowTabPanel = function() return false end
+SlashCmdList.AUCTIONHOUSEFOREVER("")
+assert(win:IsShown() and not AHF.embedded, "/ahf falls back to the window")
+win:Hide()
+AHF.ShowTabPanel = realShow
+SlashCmdList.AUCTIONHOUSEFOREVER("debug")
+local dbg = false
+for _, l in ipairs(LOG) do if l:find("tab shown=true", 1, true) then dbg = true end end
+assert(dbg, "/ahf debug reports the tab")
+
 step("Interface Options button")
 local panel = AHF.settingsPanel
 local openBtn

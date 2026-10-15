@@ -116,7 +116,15 @@ function Methods:StartSizing(point) self.__sizing = point end
 function Methods:StartMoving() self.__moving = true end
 function Methods:StopMovingOrSizing() self.__sizing, self.__moving = nil, nil end
 
-function CreateFrame(kind, name, parent, template) return newObj(kind, name, parent, template) end
+function CreateFrame(kind, name, parent, template)
+    local o = newObj(kind, name, parent, template)
+    -- The Classic client's AuctionHouseFrameTabTemplate adds itself to the
+    -- Auction House's tab list (parentArray="Tabs")
+    if template == "AuctionHouseFrameTabTemplate" and type(parent) == "table" and type(rawget(parent, "Tabs")) == "table" then
+        table.insert(parent.Tabs, o)
+    end
+    return o
+end
 UIParent = newObj("Frame", "UIParent")
 UIParent.__w, UIParent.__h = 1920, 1080
 GameTooltip = newObj("GameTooltip", "GameTooltip")

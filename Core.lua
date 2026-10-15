@@ -204,7 +204,9 @@ function AHF:OnAuctionHouseLoaded()
     self:SetupColumns(f)
     self:SetupColumnsButton(f)
     self:SetupSorting(f)
-    self:SetupTab(f)
+    -- The tab is extra: if it fails, everything else still works (/ahf debug says why)
+    local ok, err = pcall(self.SetupTab, self, f)
+    if not ok then self.tabError = err end
     self:StretchBackgrounds()
     self:ApplyLayout()
 end
@@ -218,6 +220,7 @@ AHF.COMMANDS = {
     { "/ahf reset", "size, position and scale back to the defaults" },
     { "/ahf columns", "every column shown, default order and widths" },
     { "/ahf news", "show the welcome / what's new window" },
+    { "/ahf debug", "version and tab details, for bug reports" },
 }
 
 local function Help()
@@ -241,6 +244,8 @@ SlashCmdList.AUCTIONHOUSEFOREVER = function(msg)
     elseif msg == "columns" then
         AHF:ResetColumns()
         Print("columns reset: all shown, default order and widths.")
+    elseif msg == "debug" then
+        Print("version " .. tostring(AHF:Version()) .. "; " .. (AHF.TabDebug and AHF:TabDebug() or "no tab code"))
     elseif msg == "news" then
         AHF:ToggleSplash()
     else
