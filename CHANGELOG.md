@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.1
+
+- **Resale tab:** fixed rows with a blank item name. The game sometimes sends an item's link with no name in it; those rows now show "Loading item..." and then the item's name.
+
 ## 2.3.0
 
 - **Resale options.** A strip at the top of the Resale tab sets what gets listed, and remembers it:

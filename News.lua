@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.3.1", date = "2026-10-17", items = {
+        "Resale tab: no more rows with a blank item name.",
+    } },
     { version = "2.3.0", date = "2026-10-17", items = {
         "Resale options: minimum profit, minimum percent, seen N times in X days, maximum price.",
     } },

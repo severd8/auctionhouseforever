@@ -76,7 +76,7 @@ function AHF:ReadFullScan()
                     -- Forever doesn't give addons the seller, so it's usually nil)
                     list[#list + 1] = { math.ceil(buyout / count), count, buyout, owner }
                     if link and not links[key] then links[key] = link end
-                    if name and not names[key] then names[key] = name end
+                    if name and name ~= "" and not names[key] then names[key] = name end
                 else
                     noBuyout = noBuyout + 1
                 end

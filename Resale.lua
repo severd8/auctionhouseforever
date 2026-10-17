@@ -75,18 +75,26 @@ end
 ---------------------------------------------------------------------------
 -- The scan doesn't always have an item's name and link (the game hadn't loaded
 -- the item yet): ask the game for it, and draw again when it arrives
+-- A link can also come with an empty name ("[]"), which drew as a blank row.
 local waiting = {}
+local function LinkName(link)
+    local n = type(link) == "string" and link:match("%[(.-)%]")
+    return n and n ~= "" and n or nil
+end
+
 local function ItemName(row)
-    if row.name then return row.name end
+    if row.name and row.name ~= "" then return row.name end
     local get = C_Item and C_Item.GetItemInfo or GetItemInfo
     local name, link
     if get and (row.link or row.itemID) then name, link = get(row.link or row.itemID) end
-    if name then
+    if (not name or name == "") and get and row.itemID and row.link then name, link = get(row.itemID) end
+    if name and name ~= "" then
         row.name = name
-        if not row.link then row.link = link end
+        if not LinkName(link) and get and row.itemID then link = select(2, get(row.itemID)) end
+        if not LinkName(row.link) and LinkName(link) then row.link = link end
         return name
     end
-    if row.link then return row.link:match("%[(.-)%]") end
+    if LinkName(row.link) then return LinkName(row.link) end
     if row.itemID and not waiting[row.itemID] and C_Item and C_Item.RequestLoadItemDataByID then
         waiting[row.itemID] = true
         C_Item.RequestLoadItemDataByID(row.itemID)
@@ -150,7 +158,8 @@ local function Draw()
         row:SetShown(data ~= nil)
         if data then
             local name = ItemName(data)
-            Cell(row, COLUMNS[1], data.link or name or "|cff8a8078Loading item " .. (data.itemID or data.key) .. "...|r")
+            local text = LinkName(data.link) and data.link or name
+            Cell(row, COLUMNS[1], text or "|cff8a8078Loading item " .. (data.itemID or data.key) .. "...|r")
             Cell(row, COLUMNS[2], string.format("%d%%", data.pct))
             Cell(row, COLUMNS[3], AHF.Money(data.profit))
             Cell(row, COLUMNS[4], tostring(data.qty))

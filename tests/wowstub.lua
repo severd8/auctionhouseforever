@@ -171,6 +171,7 @@ SELL_PRICES = { [3824] = 250, [3829] = 100, [2589] = 13 }
 ITEMS = {}
 C_Item = {}
 UNLOADED, LOAD_REQUESTS = {}, {}   -- items the game hasn't loaded yet
+EMPTY_LINKS = {}                   -- items whose scan link comes with an empty name: [...|h[]|h]
 function C_Item.RequestLoadItemDataByID(id) LOAD_REQUESTS[#LOAD_REQUESTS + 1] = id end
 function C_Item.GetItemInfo(item)
     local id = tonumber(item) or tonumber(tostring(item):match("item:(%d+)"))
@@ -214,10 +215,12 @@ function C_AuctionHouse.GetReplicateItemInfo(i)
     local r = AH.replicate[i + 1]
     if not r then return nil end
     local loaded = not UNLOADED[r[1]]
-    return loaded and ("Item " .. r[1]) or nil, 1, r[2], 1, true, 1, "", 0, 0, r[3], 0, nil, nil, nil, nil, 0, r[1], loaded
+    local name = EMPTY_LINKS[r[1]] and "" or loaded and ("Item " .. r[1]) or nil
+    return name, 1, r[2], 1, true, 1, "", 0, 0, r[3], 0, nil, nil, nil, nil, 0, r[1], loaded
 end
 function C_AuctionHouse.GetReplicateItemLink(i)
     local r = AH.replicate[i + 1]
+    if r and EMPTY_LINKS[r[1]] then return (ItemLink(r[1], r[4]):gsub("%[.-%]", "[]")) end
     return r and not UNLOADED[r[1]] and ItemLink(r[1], r[4]) or nil
 end
 function C_AuctionHouse.GetBrowseResults() return AH.browse or {} end

@@ -335,6 +335,19 @@ do
     has(loadingRow.cells.name:GetText(), "Item 6001", "name once it arrives")
     Click(loadingRow)
     eq(SEARCHES[#SEARCHES], "Item 6001", "and it can be searched")
+    -- a link with an empty name, as in game: the name comes from the item instead
+    UNLOADED[6001], EMPTY_LINKS[6001] = true, true
+    SERVER_TIME = SERVER_TIME + 120
+    FireEvent("REPLICATE_ITEM_LIST_UPDATE")
+    RunJobs()
+    Click(tab)
+    local emptyRow
+    for _, r in ipairs(AHF.resaleRows) do local d = rawget(r, "data") if d and d.key == "6001" then emptyRow = r end end
+    has(emptyRow.cells.name:GetText(), "Loading item 6001", "not blank while loading")
+    UNLOADED[6001] = nil
+    FireEvent("GET_ITEM_INFO_RECEIVED", 6001, true)
+    has(emptyRow.cells.name:GetText(), "[Item 6001]", "the item's own link once loaded")
+    EMPTY_LINKS[6001] = nil
     Click(tab)
     -- before any full scan
     local keep = AHF.lastScan
