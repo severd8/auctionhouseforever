@@ -361,8 +361,10 @@ function AHF:Slash(msg)
         self.db.tooltip = not self.db.tooltip
         self:Print("prices in tooltips " .. (self.db.tooltip and "on" or "off") .. ".")
         if self.RefreshWindow then self:RefreshWindow() end
+    elseif msg == "share" then
+        if self.Share then self.Share:Status() end
     elseif msg == "help" then
-        self:Print("/ahf opens the window, /ahf scan starts a full scan (at the auction house), /ahf tooltip turns the tooltip prices on or off.")
+        self:Print("/ahf opens the window, /ahf scan starts a full scan (at the auction house), /ahf tooltip turns the tooltip prices on or off, /ahf share shows what price sharing is doing.")
     else
         if self.ToggleWindow then self:ToggleWindow() end
     end

@@ -371,12 +371,17 @@ function S:CheckIdle(now)
     end
 end
 
+S.heard, S.heardFrom = 0, {}
+
 function S:Receive(text, sender)
     if not self:On() then return end
     local who = Short(sender)
     if who == Me() then return end
     local kind, fac, rest = text:match("^(%u),(%a),(.*)$")
-    if not kind or fac ~= Faction() then return end
+    if not kind then return end
+    self.heard = self.heard + 1
+    self.heardFrom[who] = fac
+    if fac ~= Faction() then return end
     if kind == "Q" then
         local theirs = n36(rest) or 0
         local h = self:Held()
@@ -413,6 +418,29 @@ function S:Receive(text, sender)
         local inc = t and self.incoming[n36(t) .. by]
         if inc then self:Finish(inc) end
     end
+end
+
+-- /ahf share: what sharing is doing, to check it in game
+function S:Status()
+    local lines = {}
+    if not self:On() then
+        lines[1] = "sharing is off (Settings)."
+    else
+        local id = GetChannelName(self.CHANNEL)
+        lines[1] = (id and id > 0) and ("sharing on, in channel " .. id .. " (" .. self.CHANNEL .. ").")
+            or ("sharing on, but not in the " .. self.CHANNEL .. " channel" .. (self.joined and "" or " yet (it joins 20 s after login)") .. ".")
+        local h = self:Held()
+        lines[2] = h and string.format("Ready to pass on: %s's scan from %s ago (%d messages to send).", h.by,
+            AHF.Age(AHF.Now() - h.t), #h.pieces) or "Nothing to pass on until you do a full scan."
+        local players = {}
+        for name, fac in pairs(self.heardFrom) do players[#players + 1] = name .. (fac ~= Faction() and " (other faction)" or "") end
+        table.sort(players)
+        lines[3] = string.format("Sent %d messages (%d waiting). Heard %d from %s.", self.sent or 0, #self.queue, self.heard,
+            #players > 0 and table.concat(players, ", ") or "nobody yet")
+        local g = AHF:Realm().shared[1]
+        if g then lines[4] = string.format("Last got: %d items from %s's scan, %s ago.", g.items, g.by, AHF.Age(AHF.Now() - g.got)) end
+    end
+    for _, l in ipairs(lines) do AHF:Print(l) end
 end
 
 AHF:On("CHAT_MSG_ADDON", function(prefix, text, channel, sender)

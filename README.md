@@ -38,6 +38,7 @@ Then visit an auctioneer and click **Scan**.
 | `/ahf` | Open or close the window (prices saved, last scan, settings, what's new) |
 | `/ahf scan` | Start a full scan (at the auction house) |
 | `/ahf tooltip` | Turn the tooltip prices on or off |
+| `/ahf share` | Show what price sharing is doing: the channel, the scan it can pass on, messages sent and heard, and from whom |
 
 ## Settings
 

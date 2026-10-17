@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.2
+
+- **`/ahf share`** shows what price sharing is doing: whether you're in the hidden channel, the scan it can pass on, how many messages it has sent and heard, and from which players. Shared prices never show as chat lines (addon messages are invisible), so this is the way to check that it works.
+
 ## 2.4.1
 
 - **Resale options look tidier.** The money boxes now look like the game's own: a box, then its gold, silver or copper coin. The silver and copper boxes are wide enough for two digits (typing 30 silver showed only "3"), and numbers sit on the right like money does.

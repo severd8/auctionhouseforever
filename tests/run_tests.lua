@@ -627,6 +627,14 @@ has(AHF.ui.sharedGot:GetText(), "2 items from Bob's scan")
 has(AHF.ui.sharing:GetText(), "passing on Bob's scan")
 AHF:Slash("")
 
+step("sharing: /ahf share says what it's doing")
+AHF:Slash("share")
+assert(chatHas("sharing on, in channel 5 (AHFPrices)"), "channel: " .. lastChat())
+assert(chatHas("Ready to pass on: Bob's scan"), "held")
+assert(chatHas("Heard ") and chatHas("Bob"), "who it heard: " .. lastChat())
+assert(chatHas("Zed (other faction)"), "other faction shown")
+assert(chatHas("Last got: 2 items from Bob's scan"), "last got")
+
 step("sharing: ignores old scans, our own messages and broken ones")
 SERVER_TIME = SERVER_TIME + 3600
 SENT = {}

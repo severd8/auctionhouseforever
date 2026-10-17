@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.4.2", date = "2026-10-17", items = {
+        "/ahf share shows what price sharing is doing: channel, scan to pass on, messages sent and heard, and from whom.",
+    } },
     { version = "2.4.1", date = "2026-10-17", items = {
         "Resale options: money boxes with coin icons, wide enough for two digits of silver and copper.",
     } },
