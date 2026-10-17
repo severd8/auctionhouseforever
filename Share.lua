@@ -94,8 +94,8 @@ local function Me()
     return UnitName and UnitName("player") or "?"
 end
 
+-- "Name-Realm" (as CHAT_MSG_ADDON gives it, even for players of our own realm) -> "Name"
 local function Short(name)
-    if Ambiguate then return Ambiguate(name or "", "none") end
     return ((name or ""):gsub("%-.*$", ""))
 end
 

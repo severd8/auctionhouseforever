@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.3
+
+- **Price sharing fix.** The game adds your realm to your name in addon messages, and AHF didn't take it off. So it heard its own messages as if from someone else, and a player who was asked for their scan never recognised the request and never sent it. Both are fixed.
+
 ## 2.4.2
 
 - **`/ahf share`** shows what price sharing is doing: whether you're in the hidden channel, the scan it can pass on, how many messages it has sent and heard, and from which players. Shared prices never show as chat lines (addon messages are invisible), so this is the way to check that it works.

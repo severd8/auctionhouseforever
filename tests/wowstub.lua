@@ -311,7 +311,8 @@ end
 ---------------------------------------------------------------------------
 PLAYER = "Tyler"
 function UnitName() return PLAYER end
-function Ambiguate(name) return (name:gsub("%-.*$", "")) end
+-- as the game: "none" keeps the realm, "short" drops it
+function Ambiguate(name, mode) return mode == "none" and name or (name:gsub("%-.*$", "")) end
 CHANNELS, SENT, PREFIXES, CHAT_FILTERS, REMOVED = {}, {}, {}, {}, {}
 SEND_RESULTS = {}            -- results to give the next sends (default 0, success)
 LOCKDOWN = false

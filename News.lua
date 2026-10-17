@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.4.3", date = "2026-10-17", items = {
+        "Price sharing fix: a player asked for their scan now sends it (names came with the realm attached).",
+    } },
     { version = "2.4.2", date = "2026-10-17", items = {
         "/ahf share shows what price sharing is doing: channel, scan to pass on, messages sent and heard, and from whom.",
     } },
