@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.2
+
+- **Full scan wait.** The auction house only sends a full scan once every 15 minutes. The Scan button now counts down to the next one (after a scan from Auctionator too), instead of letting you click and then saying the scan didn't come.
+
 ## 2.3.1
 
 - **Resale tab:** fixed rows with a blank item name. The game sometimes sends an item's link with no name in it; those rows now show "Loading item..." and then the item's name.

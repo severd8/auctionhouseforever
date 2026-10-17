@@ -90,8 +90,8 @@ local function BuildSettings(p)
         function() return AHF.db.cooldown end,
         function(v) AHF.db.cooldown = v; AHF:RefreshScanButton() end,
         0, 60, " min", 1, "%d", "None")
-    T.Tooltip(s, "Wait between full scans", "Forever lets you scan again straight away, so there's no wait to start with. "
-        .. "If the auction house starts making you wait, set it here and the button counts down.")
+    T.Tooltip(s, "Wait between full scans", "The auction house sends a full scan once every 15 minutes, and the Scan button counts that down. "
+        .. "Set a longer wait here if you want one.")
     AddRefresher(s.Refresh)
     AHF.ui.cooldown = s
 end

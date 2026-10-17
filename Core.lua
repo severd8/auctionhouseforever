@@ -14,7 +14,7 @@ AHF.DEFAULTS = {
     resaleMinSeen = 3,       -- seen in at least this many scans ...
     resaleSeenDays = 7,      -- ... in this many days
     resaleMaxPrice = 0,      -- copper, 0 = no limit
-    cooldown = 0,            -- minutes to wait between full scans (0: none; Forever allowed one straight after another in testing)
+    cooldown = 0,            -- minutes to wait between full scans (0: only the auction house's own 15)
 }
 
 -- Allowed values of the number settings
@@ -76,7 +76,8 @@ end
 -- Saved data
 --   AuctionHouseForeverData = { v = 1, realms = { ["Realm-Faction"] = {
 --       items = { [itemKey] = encoded string (or the decoded list while in use) },
---       lastFull = time of the last full scan, scans = { recent full scans } } } }
+--       lastFull = time of the last full scan asked for, lastGood = time of the last one
+--       the auction house sent, scans = { recent full scans } } } }
 --   AuctionHouseForeverSettings = settings, shared by every character
 -- Item keys: "itemID", or "itemID:suffix" for items with a random suffix.
 ---------------------------------------------------------------------------
@@ -115,6 +116,7 @@ function AHF:Realm(key)
     r.items = type(r.items) == "table" and r.items or {}
     r.scans = type(r.scans) == "table" and r.scans or {}
     r.lastFull = tonumber(r.lastFull) or 0
+    r.lastGood = tonumber(r.lastGood) or 0
     return r
 end
 

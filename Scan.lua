@@ -6,6 +6,7 @@ local T, P, AHF = ns.Theme, ns.Prices, ns.AHF
 
 AHF.SCAN_TIMEOUT = 60     -- seconds to wait for the auction house to answer a full scan
 AHF.SCAN_REPEAT = 60      -- the list arriving again this soon is the same scan
+AHF.SERVER_WAIT = 15 * 60 -- the auction house sends a full scan once every 15 minutes (measured on Forever)
 
 local scan = { state = "idle" }   -- idle, waiting, reading
 AHF.scan = scan
@@ -14,10 +15,12 @@ local function AHOpen()
     return AuctionHouseFrame and AuctionHouseFrame:IsShown() and true or false
 end
 
--- Seconds until the next full scan is allowed (0 = now)
+-- Seconds until the next full scan is allowed (0 = now): the auction house's
+-- own wait after the last scan it sent, or the player's longer wait if set
 function AHF:ScanWait()
-    local last = self:Realm().lastFull or 0
-    return math.max(0, last + self.db.cooldown * 60 - self.Now())
+    local realm = self:Realm()
+    local ready = math.max((realm.lastGood or 0) + self.SERVER_WAIT, (realm.lastFull or 0) + self.db.cooldown * 60)
+    return math.max(0, ready - self.Now())
 end
 
 ---------------------------------------------------------------------------
@@ -116,7 +119,10 @@ end
 AHF:On("REPLICATE_ITEM_LIST_UPDATE", function()
     if scan.state == "reading" then return end
     if scan.state ~= "waiting" and scan.lastRead and AHF.Now() - scan.lastRead < AHF.SCAN_REPEAT then return end
-    if scan.state ~= "waiting" then AHF:Realm().lastFull = AHF.Now() end
+    local realm = AHF:Realm()
+    if scan.state ~= "waiting" then realm.lastFull = AHF.Now() end
+    -- the auction house's wait runs from when the scan was asked for
+    realm.lastGood = scan.state == "waiting" and scan.asked or AHF.Now()
     AHF:ReadFullScan()
 end)
 

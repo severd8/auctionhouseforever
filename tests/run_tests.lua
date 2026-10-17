@@ -170,9 +170,8 @@ eq(r[1].v, 260, "Shadowgem market")
 eq(AHF:Records("15210:1018")[1].m, 9000, "suffix kept apart")
 eq(AHF:Records("15210:1019")[1].m, 5000, "other suffix")
 
-step("full scan: no wait unless one is set")
-eq(button:GetText(), "Scan", "ready straight away"); eq(button.__enabled, true, "clickable")
-AHF.db.cooldown = 15
+step("full scan: the auction house's 15 minute wait")
+eq(AHF:Realm().lastGood, AHF.scan.asked, "wait runs from when the scan was asked for")
 Tick(1)
 eq(button:GetText(), "15:00", "counts down")
 eq(button.__enabled, false, "greyed out during the wait")
@@ -186,9 +185,16 @@ Tick(1)
 eq(button:GetText(), "1:00")
 SERVER_TIME = SERVER_TIME + 60
 Tick(1)
-eq(button:GetText(), "Scan", "ready again")
+eq(button:GetText(), "Scan", "ready again"); eq(button.__enabled, true, "clickable")
+
+step("full scan: a longer wait of the player's own")
+AHF:Realm().lastFull = SERVER_TIME
+AHF.db.cooldown = 20
+Tick(1)
+eq(button:GetText(), "20:00", "the longer wait wins")
 AHF.db.cooldown = 0
 Tick(1)
+eq(button:GetText(), "Scan", "no wait of its own")
 
 step("full scan: no answer from the auction house")
 Click(button)
@@ -197,6 +203,8 @@ SERVER_TIME = SERVER_TIME + AHF.SCAN_TIMEOUT
 Tick(1)
 assert(chatHas("didn't send the full scan"), "timeout message")
 eq(AHF.scan.state, "idle", "back to idle")
+Tick(1)
+eq(button:GetText(), "Scan", "a scan that never came doesn't start the wait")
 
 step("full scan: Auctionator's scans count too")
 SERVER_TIME = SERVER_TIME + 20 * 60
@@ -206,6 +214,9 @@ FireEvent("REPLICATE_ITEM_LIST_UPDATE")
 RunJobs()
 eq(AHF:Records("3824")[1].m, 240, "lowest from Auctionator's scan")
 eq(AHF:Records("3824")[1].n, before + 1, "counted")
+eq(AHF:Realm().lastGood, SERVER_TIME, "and start the auction house's wait")
+Tick(1)
+eq(button:GetText(), "15:00", "Scan counts down after Auctionator's scan")
 FireEvent("REPLICATE_ITEM_LIST_UPDATE")
 eq(AHF:JobRunning("full scan"), false, "the same list again isn't read twice")
 

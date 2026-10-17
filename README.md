@@ -12,7 +12,7 @@ It works alongside Auctionator: a full scan started from Auctionator fills Aucti
 
 ## Features
 
-- **Full scan.** Click the red **Scan** button beside the auction house's Filter and Search buttons. It reads every listing in a few seconds and saves the prices. Chat tells you how many listings and different items it read.
+- **Full scan.** Click the red **Scan** button beside the auction house's Filter and Search buttons. It reads every listing in a few seconds and saves the prices. The auction house allows one full scan every 15 minutes, so the button then counts down to the next one. Chat tells you how many listings and different items it read.
 - **Your searches count too.** Every search you make saves the prices it shows, and so does a full scan started from Auctionator.
 - **Tooltips.** Items show **AHF Vendor** (what a vendor pays for one) and **AHF Market (seen N)**: the usual auction price for one, and how many were listed last time.
 - **Price history.** Under AHF Market: **AHF seen in N scans over D days**, then the 14, 7 and 3 day averages.
@@ -43,7 +43,7 @@ Then visit an auctioneer and click **Scan**.
 | Tab | What's there |
 |---|---|
 | **Prices** | Your realm and faction, how many items have prices, the saved file's size, the last full scan |
-| **Settings** | Tooltip prices on or off, the chat line after a scan, a wait between full scans (none to start with) |
+| **Settings** | Tooltip prices on or off, the chat line after a scan, a longer wait between full scans (the auction house's own 15 minutes to start with) |
 | **What's new** | The changes in each version |
 
 ## Feedback and bug reports
