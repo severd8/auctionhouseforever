@@ -81,7 +81,7 @@ end
 local function BuildSettings(p)
     local card = T.Card(p, "Tooltips", 0, 0, PAGE_W, 70)
     AHF.ui.tooltip = Setting(card, "Show AHF prices in item tooltips", 12, -32, "tooltip",
-        "Adds AHF Vendor (what a vendor pays) and AHF Market (the usual auction price) under items.")
+        "Adds AHF Vendor (what a vendor pays), AHF Market (the usual auction price) and, on weapons and armor, AHF Disenchant under items.")
 
     local card2 = T.Card(p, "Full scan", 0, -80, PAGE_W, 130)
     AHF.ui.scanChat = Setting(card2, "Say in chat when a full scan is done", 12, -32, "scanChat",

@@ -6,6 +6,10 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.1.0", date = "2026-10-17", items = {
+        "AHF Disenchant in tooltips: what a weapon or armor piece is worth disenchanted, from AHF Market prices.",
+        "A ~ in front means some materials have no price yet (counted at vendor price).",
+    } },
     { version = "2.0.1", date = "2026-10-17", items = {
         "The full scan button is now a small red Scan button like Search, and no longer covers the search box.",
     } },

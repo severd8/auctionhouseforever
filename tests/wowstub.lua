@@ -166,13 +166,15 @@ function GetRealmName() return REALM end
 function UnitFactionGroup() return FACTION, FACTION end
 C_AddOns = { GetAddOnMetadata = function() return "@project-version@" end }
 
--- sell prices by item ID
+-- sell prices by item ID, and { quality, item level, classID } for weapons and armor
 SELL_PRICES = { [3824] = 250, [3829] = 100, [2589] = 13 }
+ITEMS = {}
 C_Item = {}
-function C_Item.GetItemInfo(link)
-    local id = tonumber(tostring(link):match("item:(%d+)"))
+function C_Item.GetItemInfo(item)
+    local id = tonumber(item) or tonumber(tostring(item):match("item:(%d+)"))
     if not id then return nil end
-    return "Item " .. id, link, 1, 1, 1, "", "", 20, "", 0, SELL_PRICES[id] or 0
+    local i = ITEMS[id] or { 1, 1, 7 }
+    return "Item " .. id, tostring(item), i[1], i[2], 1, "", "", 20, "", 0, SELL_PRICES[id] or 0, i[3]
 end
 function ItemLink(id, suffix)
     return "|cffffffff|Hitem:" .. id .. ":0:0:0:0:0:" .. (suffix or 0) .. ":0:20:0:0:0:0|h[Item " .. id .. "]|h|r"
@@ -257,7 +259,7 @@ function RunJobs(limit)
     return frames
 end
 
-ADDON_FILES = { "Theme.lua", "Prices.lua", "Core.lua", "Scan.lua", "News.lua", "Options.lua" }
+ADDON_FILES = { "Theme.lua", "Prices.lua", "Core.lua", "Disenchant.lua", "Scan.lua", "News.lua", "Options.lua" }
 
 -- Loads the addon's files in .toc order, then the game's start-up events
 function LoadAddon(dir)

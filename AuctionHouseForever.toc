@@ -12,6 +12,7 @@
 Theme.lua
 Prices.lua
 Core.lua
+Disenchant.lua
 Scan.lua
 News.lua
 Options.lua

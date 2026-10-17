@@ -252,7 +252,8 @@ end
 ---------------------------------------------------------------------------
 -- "AHF Vendor" (what a vendor pays) and "AHF Market (seen N)" (the market value,
 -- or the lowest price when that's all there is; N = how many were listed in the
--- newest data), each for one item
+-- newest data), each for one item; and "AHF Disenchant" for items that can be
+-- disenchanted (with "~" when a material has no AHF price yet)
 function AHF.VendorPrice(link)
     local get = C_Item and C_Item.GetItemInfo or GetItemInfo
     if not get or not link then return nil end
@@ -275,6 +276,9 @@ function AHF:TooltipLines(link)
     if vendor then lines[#lines + 1] = { "AHF Vendor", self.Money(vendor) } end
     local market, last = self:MarketPrice(key, id)
     if market then lines[#lines + 1] = { "AHF Market (seen " .. (last.q or 0) .. ")", self.Money(market) } end
+    local de, guessed
+    if self.DisenchantValue then de, guessed = self:DisenchantValue(link) end
+    if de and de > 0 then lines[#lines + 1] = { "AHF Disenchant", (guessed and "~" or "") .. self.Money(de) } end
     return #lines > 0 and lines or nil
 end
 

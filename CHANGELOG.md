@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0
+
+- **Disenchant value.** Weapons and armor that can be disenchanted (green, blue and purple) show one more tooltip line: **AHF Disenchant**. It's what the item is worth to disenchant: the chance of each dust, essence and shard, times how many you usually get, times its AHF Market price. One line, no clutter.
+- If a material has no AHF price yet, it's counted at its vendor price and the value starts with **~**, so you know it's a rough guess. Scan once and the ~ goes away.
+
 ## 2.0.1
 
 - **Scan button fixed.** The full scan button no longer covers the end of the search box. It's now a small red **Scan** button like the game's own Search button, in the gap before Filter. While it works it shows its progress (for example 45%).

@@ -15,6 +15,7 @@ It works alongside Auctionator: a full scan started from Auctionator fills Aucti
 - **Full scan.** Click the red **Scan** button beside the auction house's Filter and Search buttons. It reads every listing in a few seconds and saves the prices. Chat tells you how many listings and different items it read.
 - **Your searches count too.** Every search you make saves the prices it shows, and so does a full scan started from Auctionator.
 - **Tooltips.** Items show **AHF Vendor** (what a vendor pays for one) and **AHF Market (seen N)**: the usual auction price for one, and how many were listed last time.
+- **Disenchant value.** Weapons and armor that can be disenchanted show **AHF Disenchant**: each material's chance, times how many you usually get, times its AHF Market price, in one line. A **~** in front means some materials have no price yet.
 - **A fair market price.** The middle price of the cheapest listings, ignoring silly prices at either end, so one listing at 1 copper or 999 gold can't drag it.
 - **Per realm and faction.** Alliance and Horde keep separate prices, since their auction houses are separate.
 - **Small saved file.** Each day is kept for two weeks, then joined into weeks; anything older than a year is dropped. Big jobs are spread out so the game never freezes.

@@ -9,6 +9,7 @@ AuctionHouse Forever saves the prices you see at the auction house, from full sc
 - **Full scan**: click the red **Scan** button beside the auction house's Search button. It reads every listing in a few seconds and saves the prices.
 - **Your searches count too**: every search you make saves its prices, and so does a full scan from Auctionator.
 - **Tooltips**: **AHF Vendor** (what a vendor pays) and **AHF Market (seen N)** (the usual auction price, and how many were listed last time).
+- **Disenchant value**: weapons and armor show **AHF Disenchant**, worked out from each material's chance and its AHF Market price.
 - **A fair market price**: the middle of the cheapest listings, ignoring silly prices at either end.
 - **Per realm and faction**, with a small saved file: days are joined into weeks after two weeks, and dropped after a year.
 

@@ -14,6 +14,7 @@ A price-history addon for **World of Warcraft: Forever** (interface 16001, Lua 5
 - `Theme.lua` — **the shared look, the same file in all the Forever addons.** Copied from GatherPath Forever (1.10.0 version, with `opts.height` / `T.BodyHeight`) plus an `AuctionHouseForever` row in `BRANDS` (logo `Media\logo`). Copy that row to the other repos next time Theme.lua changes there.
 - `Prices.lua` — the price math and saved format, plain Lua with no game calls (the tests load it on its own): `P.Encode`/`P.Decode`, `P.MarketValue`, `P.Summarize`, `P.Add`, `P.Join`, `P.Condense`, `P.Average`.
 - `Core.lua` — settings (`AHF.DEFAULTS`), saved data (`LoadSaved`, `Realm`, `Records`, `Observe`, `Pack`, `Stats`), item keys (`KeyFor`, `KeyFromLink`), background jobs (`RunJob`, `Pause`, `JobRunning`), condensing at login (`CondenseAll`), tooltips (`TooltipLines`, `AddToTooltip`, `HookTooltips`), `/ahf`, events (`AHF:On(event, fn)`).
+- `Disenchant.lua` (since 2.1.0) — the disenchanting table (`AHF.DE_MATERIALS`, `UNCOMMON`, `RARE`, `EPIC`), `AHF.DisenchantResults(quality, itemLevel, classID)` and `AHF:DisenchantValue(link)`.
 - `Scan.lua` — full scan (`StartFullScan`, `ReadFullScan`, `CheckScanTimeout`), searches (`RecordBrowse`, `RecordCommodity`, `RecordItem`), the Full scan button (`MakeScanButton`, `RefreshScanButton`).
 - `News.lua` — "What's new" lines for the window's What's new tab, newest first. **Add an entry with every release**; its top version must match the top of `CHANGELOG.md` (a test checks this).
 - `Options.lua` — the window (`T.Window`, `/ahf`): Prices (realm key, items saved, records, approximate saved size, last full scan with its listing and item counts, next scan), Settings (tooltip, scan chat line, wait between scans slider 0–60 min, 0 = "None"), What's new. `AHF.ui` keeps the widgets the tests use.
@@ -64,6 +65,12 @@ Listings are `{ price per item, quantity }`. Each item in a stack counts once. T
 `TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, ...)` (in Forever's `TooltipDataHandler.lua`; falls back to `GameTooltip:HookScript("OnTooltipSetItem")`), `tooltip:GetItem()` for the link. Lines, per one item (Tyler's choice), labelled "AHF" (Tyler's wording):
 - `AHF Vendor`: 11th return of `C_Item.GetItemInfo` (`sellPrice`, no `SecretReturns`), when above 0.
 - `AHF Market (seen N)`: the newest record's market value, or its lowest price when there's no market value; N = its quantity listed.
+
+## Disenchant value (since 2.1.0)
+
+- One tooltip line, `AHF Disenchant` (Tyler asked for a single value, not AucAdvanced's two). Value = sum over materials of chance x average amount x price. Price = the material's `AHF:MarketPrice` (newest market value, else lowest); with none, its vendor `sellPrice` and the value gets a leading `~`.
+- Which items: `classID` 2 (weapon) or 4 (armor) from the 12th return of `C_Item.GetItemInfo`, quality 2-4, item level (4th return, the base level) at least 5 (blue at least 11, purple at least 40). No API says what an item disenchants into, so the table is written out from the Classic disenchanting results (public game knowledge, not from any addon): greens by item level band 15/20/25/.../60/65+ give dust 75% / essence 20% / shard 5% (weapons swap dust and essence; up to level 15 it's 80/20 with no shard), average amounts 1.5 (1-2), 2.5 (2-3), 3.5 (2-5), 5 (4-6); blues one shard by band (56+ Large Brilliant, with 0.5% Nexus Crystal); purples 3 shards (2-4) up to 55, then Nexus Crystal 1 (56-60) or 1.5 (61+). Matches AucAdvanced's tooltip Tyler sent for a level-200-skill green (75% Illusion Dust x1.5, 20% Greater Eternal Essence x1.5, 5% Large Brilliant Shard x1.0). **Unconfirmed on Forever**: the exact level bands and amounts, whether Forever has Outland (TBC) materials (not in the table), and items that can't be disenchanted despite being green weapons/armor (none are excluded).
+- Mutation checks: weapons not swapping dust and essence; a missing price not marking `~`.
 
 ## Tests
 

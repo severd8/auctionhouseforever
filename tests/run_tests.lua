@@ -250,6 +250,57 @@ AHF:Slash("tooltip")
 eq(#HoverItem(ItemLink(3824)), 2, "back on")
 
 ---------------------------------------------------------------------------
+step("disenchant value")
+local M = AHF.DE_MATERIALS
+-- the table: green armor at item level 58 (skill 200, as in AucAdvanced's tooltip)
+local res = AHF.DisenchantResults(2, 58, 4)
+eq(res[1][1], M.illusion); eq(res[1][2], 0.75); eq(res[1][3], 1.5)
+eq(res[2][1], M.greaterEternal); eq(res[2][2], 0.20)
+eq(res[3][1], M.largeBrilliant); eq(res[3][2], 0.05); eq(res[3][3], 1)
+-- weapons: mostly essence
+res = AHF.DisenchantResults(2, 58, 2)
+eq(res[1][2], 0.20, "weapon dust"); eq(res[2][2], 0.75, "weapon essence")
+eq(#AHF.DisenchantResults(2, 10, 4), 2, "low greens: no shard")
+eq(AHF.DisenchantResults(3, 30, 4)[1][1], M.largeGlimmering, "blue: one shard")
+eq(AHF.DisenchantResults(4, 60, 4)[1][1], M.nexus, "purple 60: nexus")
+eq(AHF.DisenchantResults(1, 58, 4), nil, "white: no")
+eq(AHF.DisenchantResults(2, 58, 7), nil, "trade goods: no")
+-- every quality and level gives chances adding up to 1
+for _, q in ipairs({ 2, 3, 4 }) do
+    for lvl = 5, 70 do
+        for _, class in ipairs({ 2, 4 }) do
+            local r = AHF.DisenchantResults(q, lvl, class)
+            if r then
+                local sum = 0
+                for _, m in ipairs(r) do sum = sum + m[2]; assert(m[1] and m[3] > 0, "material") end
+                assert(math.abs(sum - 1) < 1e-9, "chances add up for " .. q .. "/" .. lvl)
+            end
+        end
+    end
+end
+-- prices from AHF Market: 75% x 1.5 x 1g + 20% x 1.5 x 5g + 5% x 1 x 20g = 1.125 + 1.5 + 1 = 3.625g
+ITEMS[19999] = { 2, 58, 4 }
+SERVER_TIME = SERVER_TIME + 60
+for id, price in pairs({ [M.illusion] = 10000, [M.greaterEternal] = 50000, [M.largeBrilliant] = 200000 }) do
+    AH.commodities[id] = { { price, 10 } }
+    FireEvent("COMMODITY_SEARCH_RESULTS_UPDATED", id)
+end
+local value, guessed = AHF:DisenchantValue(ItemLink(19999))
+eq(value, 36250, "3g 62s 50c"); eq(guessed, false, "all priced")
+lines = HoverItem(ItemLink(19999))
+eq(lines[#lines][1], "AHF Disenchant"); eq(lines[#lines][2], AHF.Money(36250), "one line")
+-- a material with no price: counted at its vendor price, marked with ~
+ITEMS[19998] = { 2, 45, 4 }
+SELL_PRICES[M.vision] = 100
+value, guessed = AHF:DisenchantValue(ItemLink(19998))
+eq(guessed, true, "guessed"); eq(value, math.floor(0.75 * 3.5 * 100 + 0.5), "vision dust at vendor price")
+lines = HoverItem(ItemLink(19998))
+eq(lines[#lines][2]:sub(1, 1), "~", "marked as a guess")
+eq(lines[#lines][1], "AHF Disenchant")
+lines = HoverItem(ItemLink(3824))
+for _, l in ipairs(lines) do assert(l[1] ~= "AHF Disenchant", "not on materials") end
+
+---------------------------------------------------------------------------
 step("realms and factions keep their own prices")
 FACTION = "Alliance"
 eq(AHF:Records("3824"), nil, "Alliance has none")
