@@ -9,10 +9,13 @@
 ## X-Curse-Project-ID: 1742416
 ## X-Category: Auction & Economy
 
+Libs/LibStub/LibStub.lua
+Libs/LibAHTab/LibAHTab.lua
 Theme.lua
 Prices.lua
 Core.lua
 Disenchant.lua
 Scan.lua
+Resale.lua
 News.lua
 Options.lua

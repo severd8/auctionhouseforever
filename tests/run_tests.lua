@@ -234,20 +234,105 @@ FireEvent("AUCTION_HOUSE_BROWSE_RESULTS_ADDED", { { itemKey = { itemID = 4339 },
 eq(AHF:Records("4339")[1].m, 5, "more browse results")
 
 ---------------------------------------------------------------------------
+step("resale tab: listings below the usual price")
+do
+    local realm = AHF:Realm()
+    local today = math.floor(SERVER_TIME / DAY)
+    local hist = {}
+    for d = today - 13, today - 1 do hist[#hist + 1] = { d = d, s = 1, m = 900, v = 1000, q = 9, n = 1, t = d * DAY } end
+    realm.items["6000"] = P.Encode(hist)
+    SERVER_TIME = SERVER_TIME + 120
+    AH.replicate = {
+        -- usual price 971: 13 days at 1000 and today's 600 (this scan's market value)
+        { 6000, 1, 500 },        -- 971 x 0.95 - 500 = 422 profit, 84%
+        { 6000, 5, 3000 },       -- 5 x 971 x 0.95 - 3000 = 1612, 53%
+        { 6000, 1, 900 },        -- 22 profit: too small
+        { 6000, 1, 2000 },       -- dearer than usual
+        { 6001, 1, 100 },        -- no history, but 10 others at 1000 this scan
+    }
+    for _ = 1, 10 do table.insert(AH.replicate, { 6001, 1, 1000 }) end
+    FireEvent("REPLICATE_ITEM_LIST_UPDATE")
+    RunJobs()
+    eq(AHF:UsualPrice("6001"), 1000, "usual price from this scan, the cheap one ignored")
+    local list = AHF:ResaleRows()
+    eq(#list, 3, "three worth reselling")
+    eq(AHF:UsualPrice("6000"), 971, "14 day average with today")
+    eq(list[1].key, "6000"); eq(list[1].profit, 1612); eq(math.floor(list[1].pct), 53); eq(list[1].qty, 5)
+    eq(list[2].key, "6001"); eq(list[2].profit, 850)
+    eq(list[3].profit, 422); eq(math.floor(list[3].pct), 84); eq(list[3].seller, "Seller")
+
+    -- the tab
+    local tab = AHF.resaleTab
+    assert(tab, "Resale tab made")
+    eq(tab:GetText(), "Resale")
+    Click(tab)
+    local panel = AHF.resalePanel
+    eq(panel:IsShown(), true, "page shown")
+    has(panel.info:GetText(), "3 listings below the usual price")
+    has(panel.total:GetText(), AHF.Money(1612 + 850 + 422))
+    local row1 = AHF.resaleRows[1]
+    eq(row1:IsShown(), true); eq(row1.cells.pct:GetText(), "53%"); eq(row1.cells.profit:GetText(), AHF.Money(1612))
+    eq(row1.cells.qty:GetText(), "5"); eq(row1.cells.usual:GetText(), AHF.Money(971)); eq(row1.cells.seller:GetText(), "Seller")
+    eq(AHF.resaleRows[4]:IsShown(), false, "empty rows hidden")
+    -- sort by percent
+    Click(panel.headers.pct)
+    eq(AHF.resaleRows[1].cells.pct:GetText(), "850%", "highest percent first")
+    Click(panel.headers.pct)
+    eq(AHF.resaleRows[1].cells.pct:GetText(), "53%", "and the other way")
+    -- clicking a row finds it on the Buy tab (the page closes, as for any other tab)
+    Click(AHF.resaleRows[1])
+    eq(SEARCHES[#SEARCHES], "Item 6000", "searched for it")
+    eq(AuctionHouseFrame.displayMode, AuctionHouseFrameDisplayMode.Buy, "on the Buy tab")
+    eq(panel:IsShown(), false, "Resale page closed")
+    -- before any full scan
+    local keep = AHF.lastScan
+    AHF.lastScan = nil
+    Click(tab)
+    has(panel.info:GetText(), "Do a full scan")
+    eq(AHF.resaleRows[1]:IsShown(), false)
+    AHF.lastScan = keep
+    AuctionHouseFrame:SetDisplayMode(AuctionHouseFrameDisplayMode.Buy)
+end
+eq(AHF.ResaleProfit(1000, 2, 1000), 900, "2 x 1000 less 5% less 1000")
+
+---------------------------------------------------------------------------
 step("tooltips: AHF Vendor and AHF Market")
 local lines = HoverItem(ItemLink(3824))
-eq(#lines, 2, "two lines")
+eq(#lines, 6, "vendor, market, history header and three averages")
 eq(lines[1][1], "AHF Vendor"); has(lines[1][2], "2|T", "vendor 2s 50c"); has(lines[1][2], "50|T")
 eq(lines[2][1], "AHF Market (seen 1)", "how many were listed last"); has(lines[2][2], "2|T", "market about 2s 40-60c")
+has(lines[3][1], "AHF seen in "); eq(lines[4][1], "  14 day average"); eq(lines[5][1], "  7 day average"); eq(lines[6][1], "  3 day average")
 lines = HoverItem(ItemLink(4306))
-eq(lines[#lines][1], "AHF Market (seen 60)"); has(lines[#lines][2], "9|T", "lowest price when there's no market value")
+eq(lines[1][1], "AHF Market (seen 60)"); has(lines[1][2], "9|T", "lowest price when there's no market value")
 lines = HoverItem(ItemLink(15210, 1019))
-eq(lines[#lines][1], "AHF Market (seen 1)"); has(lines[#lines][2], "50|T", "random suffix item")
+eq(lines[1][1], "AHF Market (seen 1)"); has(lines[1][2], "50|T", "random suffix item")
 eq(#HoverItem(ItemLink(77777)), 0, "nothing known, no lines")
 AHF:Slash("tooltip")
 eq(#HoverItem(ItemLink(3824)), 0, "turned off")
 AHF:Slash("tooltip")
-eq(#HoverItem(ItemLink(3824)), 2, "back on")
+eq(#HoverItem(ItemLink(3824)), 6, "back on")
+
+---------------------------------------------------------------------------
+step("tooltips: history and averages")
+do
+    local realm = AHF:Realm()
+    local today = math.floor(SERVER_TIME / DAY)
+    -- 30 days ago 1g (2 scans a day), then 5g for the last 7 days
+    local recs = {}
+    for d = today - 29, today do
+        recs[#recs + 1] = { d = d, s = 1, m = 1, v = d > today - 7 and 50000 or 10000, q = 5, n = 2, t = d * DAY }
+    end
+    realm.items["5000"] = recs
+    lines = HoverItem(ItemLink(5000))
+    eq(lines[2][1], "AHF seen in 60 scans over 30 days:", "header")
+    eq(lines[3][1], "  14 day average"); eq(lines[3][2], AHF.Money((7 * 50000 + 7 * 10000) / 14), "14 days")
+    eq(lines[4][1], "  7 day average"); eq(lines[4][2], AHF.Money(50000), "7 days")
+    eq(lines[5][1], "  3 day average"); eq(lines[5][2], AHF.Money(50000), "3 days")
+    -- only old data: no averages, no header
+    realm.items["5001"] = { { d = today - 40, s = 7, m = 1, v = 9, q = 1, n = 1, t = 0 } }
+    lines = HoverItem(ItemLink(5001))
+    eq(#lines, 1, "just the market line")
+end
 
 ---------------------------------------------------------------------------
 step("disenchant value")
@@ -315,7 +400,7 @@ local w = AHF.window
 assert(w and w:IsShown(), "window open")
 has(AHF.ui.where:GetText(), "Mega Server-Horde")
 has(AHF.ui.stored:GetText(), "items")
-has(AHF.ui.scanCounts:GetText(), "1 listings of 1 different items")
+has(AHF.ui.scanCounts:GetText(), "15 listings of 2 different items")
 w:ShowTab("settings")
 eq(AHF.ui.tooltip:IsOn(), true, "tooltip switch on")
 Click(AHF.ui.tooltip)
@@ -345,7 +430,7 @@ AHF = ns.AHF
 eq(AHF.db.cooldown, 10, "settings kept")
 eq(AHF:Stats(), itemsBefore, "items kept")
 eq(AHF:Records("3824")[1].m, 240, "prices kept")
-eq(#HoverItem(ItemLink(3824)), 2, "tooltips after loading")
+eq(#HoverItem(ItemLink(3824)), 6, "tooltips after loading")
 
 step("broken saved data doesn't stop it")
 ALL_FRAMES = {}

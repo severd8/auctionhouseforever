@@ -268,6 +268,29 @@ function AHF:MarketPrice(itemKey, itemID)
     return last.v > 0 and last.v or last.m, last
 end
 
+-- "AHF seen in N scans over D days:" and the 14, 7 and 3 day averages (market
+-- value, or the lowest price on days without one, weighted by scans)
+AHF.AVERAGE_DAYS = { 14, 7, 3 }
+
+function AHF:HistoryLines(key, id)
+    local recs = self:Records(key) or (id and self:Records(tostring(id)))
+    if not recs or #recs == 0 then return nil end
+    local P = ns.Prices
+    local today = P.Day(self.Now())
+    local scans = 0
+    for _, r in ipairs(recs) do scans = scans + math.max(r.n, 1) end
+    local days = today - recs[1].d + 1
+    local lines = {}
+    for _, d in ipairs(self.AVERAGE_DAYS) do
+        local avg = P.Average(recs, d, today)
+        if avg then lines[#lines + 1] = { "  " .. d .. " day average", self.Money(avg) } end
+    end
+    if #lines == 0 then return nil end
+    table.insert(lines, 1, { string.format("AHF seen in %d scan%s over %d day%s:", scans, scans == 1 and "" or "s",
+        days, days == 1 and "" or "s"), "" })
+    return lines
+end
+
 function AHF:TooltipLines(link)
     local key, id = self.KeyFromLink(link)
     if not key then return nil end
@@ -276,6 +299,8 @@ function AHF:TooltipLines(link)
     if vendor then lines[#lines + 1] = { "AHF Vendor", self.Money(vendor) } end
     local market, last = self:MarketPrice(key, id)
     if market then lines[#lines + 1] = { "AHF Market (seen " .. (last.q or 0) .. ")", self.Money(market) } end
+    local history = self:HistoryLines(key, id)
+    for _, l in ipairs(history or {}) do lines[#lines + 1] = l end
     local de, guessed
     if self.DisenchantValue then de, guessed = self:DisenchantValue(link) end
     if de and de > 0 then lines[#lines + 1] = { "AHF Disenchant", (guessed and "~" or "") .. self.Money(de) } end

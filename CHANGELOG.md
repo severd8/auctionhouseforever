@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.0
+
+- **Resale tab.** A new **Resale** tab at the bottom of the auction house lists the listings from your last full scan that sell below their usual price, with the profit and percent profit if you buy and post them again. The profit already takes off the auction house's 5% cut. Only deals worth at least 1 silver and 10% are listed, best first. Click a column header to sort by it. Click a row to search for that item on the Buy tab, then buy it with the game's own button.
+- **Price history in tooltips.** Under AHF Market, a short history: **AHF seen in N scans over D days**, then the **14, 7 and 3 day averages**. **AHF Disenchant** is now the last line.
+
 ## 2.1.0
 
 - **Disenchant value.** Weapons and armor that can be disenchanted (green, blue and purple) show one more tooltip line: **AHF Disenchant**. It's what the item is worth to disenchant: the chance of each dust, essence and shard, times how many you usually get, times its AHF Market price. One line, no clutter.

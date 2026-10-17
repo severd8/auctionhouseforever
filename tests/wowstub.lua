@@ -230,6 +230,29 @@ function C_AuctionHouse.GetItemSearchResultInfo(key, i)
 end
 function C_AuctionHouse.HasFullItemSearchResults(key) return AH.full[key.itemID] ~= false end
 
+SEARCHES = {}
+AuctionHouseFrameDisplayMode = { Buy = { "Buy" } }
+WOW_PROJECT_ID, WOW_PROJECT_MAINLINE = 1, 1
+function Methods:IsObjectType(t) return t == "Frame" or t == self.__kind end
+function hooksecurefunc(obj, name, fn)
+    if type(obj) == "string" then
+        local old = _G[obj]
+        _G[obj] = function(...) local r = { old(...) } fn(...) return unpack(r) end
+        return
+    end
+    if obj == AuctionHouseFrame and name == "SetDisplayMode" then
+        obj.__modeHooks = obj.__modeHooks or {}
+        table.insert(obj.__modeHooks, fn)
+        return
+    end
+    local old = obj[name]
+    obj[name] = function(...) local r = { old(...) } fn(...) return unpack(r) end
+end
+function PanelTemplates_TabResize() end
+function PanelTemplates_SelectTab(tab) tab.__selected = true end
+function PanelTemplates_DeselectTab(tab) tab.__selected = false end
+function GameTooltip:SetHyperlink(link) self.__item = link end
+
 -- The game's auction house window (made when it opens, as Blizzard_AuctionHouseUI loads)
 function OpenAuctionHouse()
     if not AuctionHouseFrame then
@@ -237,6 +260,20 @@ function OpenAuctionHouse()
         AuctionHouseFrame.SearchBar = newObj("Frame", nil, AuctionHouseFrame)
         AuctionHouseFrame.SearchBar.FilterButton = newObj("Button", nil, AuctionHouseFrame.SearchBar)
         AuctionHouseFrame.SearchBar.SearchButton = newObj("Button", nil, AuctionHouseFrame.SearchBar)
+        local bar = AuctionHouseFrame.SearchBar
+        function bar:SetSearchText(t) self.__search = t end
+        function bar:StartSearch() SEARCHES[#SEARCHES + 1] = self.__search end
+        AuctionHouseFrame.Tabs = {}
+        for i, label in ipairs({ "Buy", "Sell", "Auctions" }) do
+            local tab = newObj("Button", nil, AuctionHouseFrame)
+            tab:SetText(label)
+            AuctionHouseFrame.Tabs[i] = tab
+        end
+        function AuctionHouseFrame:SetDisplayMode(mode)
+            self.displayMode = mode
+            for _, fn in ipairs(self.__modeHooks or {}) do fn(self, mode) end
+        end
+        function AuctionHouseFrame:SetTitle(t) self.__title = t end
         FireEvent("ADDON_LOADED", "Blizzard_AuctionHouseUI")
     end
     AuctionHouseFrame:Show()
@@ -259,10 +296,12 @@ function RunJobs(limit)
     return frames
 end
 
-ADDON_FILES = { "Theme.lua", "Prices.lua", "Core.lua", "Disenchant.lua", "Scan.lua", "News.lua", "Options.lua" }
+ADDON_FILES = { "Libs/LibStub/LibStub.lua", "Libs/LibAHTab/LibAHTab.lua", "Theme.lua", "Prices.lua", "Core.lua", "Disenchant.lua", "Scan.lua", "Resale.lua", "News.lua", "Options.lua" }
 
 -- Loads the addon's files in .toc order, then the game's start-up events
+strmatch = string.match
 function LoadAddon(dir)
+    LibStub = nil   -- a fresh game: the bundled libraries load again
     local ns = {}
     for _, f in ipairs(ADDON_FILES) do
         local chunk = assert(loadfile((dir or ".") .. "/" .. f))

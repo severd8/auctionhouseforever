@@ -6,6 +6,11 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.2.0", date = "2026-10-17", items = {
+        "Resale tab in the auction house: listings below their usual price, with profit and percent (after the 5% cut).",
+        "Click a Resale row to search for it on the Buy tab; click a header to sort.",
+        "Tooltips show how many scans over how many days, and the 14, 7 and 3 day averages.",
+    } },
     { version = "2.1.0", date = "2026-10-17", items = {
         "AHF Disenchant in tooltips: what a weapon or armor piece is worth disenchanted, from AHF Market prices.",
         "A ~ in front means some materials have no price yet (counted at vendor price).",

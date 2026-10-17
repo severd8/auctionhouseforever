@@ -15,6 +15,8 @@ It works alongside Auctionator: a full scan started from Auctionator fills Aucti
 - **Full scan.** Click the red **Scan** button beside the auction house's Filter and Search buttons. It reads every listing in a few seconds and saves the prices. Chat tells you how many listings and different items it read.
 - **Your searches count too.** Every search you make saves the prices it shows, and so does a full scan started from Auctionator.
 - **Tooltips.** Items show **AHF Vendor** (what a vendor pays for one) and **AHF Market (seen N)**: the usual auction price for one, and how many were listed last time.
+- **Price history.** Under AHF Market: **AHF seen in N scans over D days**, then the 14, 7 and 3 day averages.
+- **Resale tab.** A **Resale** tab at the bottom of the auction house lists the listings from your last full scan that sell below their usual price (the 14 day average), with profit and percent profit after the auction house's 5% cut. Sort by any column; click a row to search for it on the Buy tab, then buy with the game's own button.
 - **Disenchant value.** Weapons and armor that can be disenchanted show **AHF Disenchant**: each material's chance, times how many you usually get, times its AHF Market price, in one line. A **~** in front means some materials have no price yet.
 - **A fair market price.** The middle price of the cheapest listings, ignoring silly prices at either end, so one listing at 1 copper or 999 gold can't drag it.
 - **Per realm and faction.** Alliance and Horde keep separate prices, since their auction houses are separate.
@@ -61,6 +63,10 @@ AuctionHouse Forever is free. If it helps you sell smarter, you can [leave a sma
 - **GatherPath Forever**: the shortest gathering route through your herb and ore nodes.
 
 All free on CurseForge.
+
+## Credits
+
+The Resale tab uses **LibAHTab** by plusmouse (MIT licence, included in `Libs/LibAHTab`), the library Auctionator makes its tabs with, so the tabs line up. **LibStub** is public domain.
 
 ## License
 

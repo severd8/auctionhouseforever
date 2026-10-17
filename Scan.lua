@@ -47,10 +47,11 @@ end
 
 -- One listing of the full scan list (0-based, as the game numbers them)
 local function ReadListing(i)
-    local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, itemID = C_AuctionHouse.GetReplicateItemInfo(i)
+    local name, _, count, _, _, _, _, _, _, buyout, _, _, _, owner, _, _, itemID = C_AuctionHouse.GetReplicateItemInfo(i)
     if not itemID then return nil end
-    local key = AHF.KeyFromLink(C_AuctionHouse.GetReplicateItemLink(i)) or AHF.KeyFor(itemID)
-    return key, itemID, count or 0, buyout or 0
+    local link = C_AuctionHouse.GetReplicateItemLink(i)
+    local key = AHF.KeyFromLink(link) or AHF.KeyFor(itemID)
+    return key, itemID, count or 0, buyout or 0, owner, link, name
 end
 
 function AHF:ReadFullScan()
@@ -60,18 +61,21 @@ function AHF:ReadFullScan()
     self:RefreshScanButton()
     self:RunJob("full scan", function()
         local total = C_AuctionHouse.GetNumReplicateItems() or 0
-        local byKey, keys, ids = {}, {}, {}
+        local byKey, keys, ids, links, names = {}, {}, {}, {}, {}
         local listings, noBuyout, distinctIDs = 0, 0, 0
         scan.total, scan.done = total, 0
         for i = 0, total - 1 do
-            local key, itemID, count, buyout = ReadListing(i)
+            local key, itemID, count, buyout, owner, link, name = ReadListing(i)
             if key then
                 listings = listings + 1
                 if not ids[itemID] then ids[itemID] = true; distinctIDs = distinctIDs + 1 end
                 if buyout > 0 and count > 0 then
                     local list = byKey[key]
                     if not list then list = {}; byKey[key] = list; keys[#keys + 1] = key end
-                    list[#list + 1] = { math.ceil(buyout / count), count }
+                    -- price per item, quantity, buyout, seller (the Resale tab uses the last two)
+                    list[#list + 1] = { math.ceil(buyout / count), count, buyout, owner }
+                    if link and not links[key] then links[key] = link end
+                    if name and not names[key] then names[key] = name end
                 else
                     noBuyout = noBuyout + 1
                 end
@@ -87,6 +91,8 @@ function AHF:ReadFullScan()
             end
             if n % 20 == 0 then self:Pause() end
         end
+        -- every listing of this scan, for the Resale tab (kept until the next scan or logout)
+        self.lastScan = { t = now, byKey = byKey, keys = keys, links = links, names = names }
         scan.result = { t = now, listings = listings, items = distinctIDs, keys = #keys, noBuyout = noBuyout,
             secs = math.floor((debugprofilestop() - scan.started) / 100 + 0.5) / 10 }
     end, function()
@@ -100,6 +106,7 @@ function AHF:ReadFullScan()
         end
         self:RefreshScanButton()
         if self.RefreshWindow then self:RefreshWindow() end
+        if self.RefreshResale then self:RefreshResale() end
     end)
 end
 
