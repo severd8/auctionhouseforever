@@ -9,13 +9,13 @@ local T, P, AHF = ns.Theme, ns.Prices, ns.AHF
 local C, Text = T.C, T.Text
 
 AHF.AH_CUT = 0.05            -- the auction house keeps 5% of a sale
-AHF.RESALE_MIN_PROFIT = 100  -- copper (1 silver): smaller ones aren't worth the trip
-AHF.RESALE_MIN_PCT = 10      -- percent
+-- The tab's options (minimum profit, percent, scans seen, maximum price) are
+-- settings: AHF.db.resaleMinProfit and so on, in Core.lua
 AHF.RESALE_MAX = 500         -- rows kept (the best ones)
 AHF.RESALE_DAYS = 14         -- the usual price: the 14 day average (else the newest market price)
 
 local TAB_ID = "AuctionHouseForeverResale"
-local ROWS, ROW_H = 22, 18
+local ROWS, ROW_H = 20, 18
 
 ---------------------------------------------------------------------------
 -- The numbers
@@ -38,18 +38,26 @@ function AHF.ResaleProfit(usual, qty, buyout)
 end
 
 -- Rows: { key, itemID, link, name, qty, buyout, usual, profit, pct }, best profit
--- first; and how many there were before keeping the best RESALE_MAX
+-- first; how many there were before keeping the best RESALE_MAX; and how many
+-- more the "seen" option left out
 function AHF:ResaleRows()
     local scan = self.lastScan
     if not scan then return nil end
-    local rows = {}
+    local db = self.db
+    local today = P.Day(self.Now())
+    local rows, unseen = {}, 0
     for _, key in ipairs(scan.keys) do
         local usual = self:UsualPrice(key)
+        local seenEnough = usual and P.Scans(self:Records(key), db.resaleSeenDays, today) >= db.resaleMinSeen
         if usual then
             for _, l in ipairs(scan.byKey[key]) do
                 local qty, buyout = l[2], l[3]
                 local profit, pct = self.ResaleProfit(usual, qty, buyout)
-                if profit >= self.RESALE_MIN_PROFIT and pct >= self.RESALE_MIN_PCT then
+                local ok = profit >= db.resaleMinProfit and pct >= db.resaleMinPct
+                    and (db.resaleMaxPrice == 0 or buyout <= db.resaleMaxPrice)
+                if ok and not seenEnough then
+                    unseen = unseen + 1
+                elseif ok then
                     rows[#rows + 1] = { key = key, itemID = scan.itemIDs and scan.itemIDs[key], link = scan.links[key],
                         name = scan.names[key], qty = qty, buyout = buyout, usual = usual, profit = profit, pct = pct }
                 end
@@ -59,7 +67,7 @@ function AHF:ResaleRows()
     table.sort(rows, function(a, b) return a.profit > b.profit end)
     local found = #rows
     for i = #rows, self.RESALE_MAX + 1, -1 do rows[i] = nil end
-    return rows, found
+    return rows, found, unseen
 end
 
 ---------------------------------------------------------------------------
@@ -113,6 +121,7 @@ local COLUMNS = {
 }
 
 local panel, rows, shown = nil, {}, {}
+local BuildOptions
 local sortKey, sortDown, offset = "profit", true, 0
 
 local function Sort()
@@ -153,7 +162,7 @@ end
 
 function AHF:RefreshResale()
     if not panel or not panel:IsShown() then return end
-    local list, found = self:ResaleRows()
+    local list, found, unseen = self:ResaleRows()
     shown = list or {}
     Sort()
     offset = 0
@@ -165,12 +174,118 @@ function AHF:RefreshResale()
         for _, r in ipairs(shown) do total = total + r.profit end
         local count = found > #shown and string.format("%d listings below the usual price (the best %d shown)", found, #shown)
             or string.format("%d listing%s below the usual price", found, found == 1 and "" or "s")
+        if unseen > 0 then
+            count = count .. string.format(" (%d more seen too few times)", unseen)
+        end
         panel.info:SetText(string.format("From your full scan %s: %s. Click one to find it on the Buy tab.",
             AHF.Now() - self.lastScan.t < 60 and "just now" or (AHF.Age(AHF.Now() - self.lastScan.t) .. " ago"), count))
         panel.total:SetText(#shown > 0 and ("Profit if you resell " .. (found > #shown and "these " .. #shown or "them all")
             .. ": " .. AHF.Money(total)) or "")
     end
     Draw()
+end
+
+---------------------------------------------------------------------------
+-- The options strip: minimum profit, minimum percent, seen N times in X days,
+-- maximum price. Saved; the list updates as soon as a box loses focus or
+-- Enter is pressed.
+---------------------------------------------------------------------------
+local OPTION_Y = -34
+
+local function Label(parent, text, x)
+    local fs = Text(parent, text, "GameFontNormalSmall", C.muted)
+    fs:SetPoint("TOPLEFT", x, OPTION_Y - 5)
+    return fs, x + math.max(8, (fs:GetStringWidth() or 0)) + 6
+end
+
+-- A number box. get() and set(v) read and store the setting (set gets nil for a blank box)
+local function NumberBox(parent, x, width, get, set, tip)
+    local eb = T.EditBox(parent, width)
+    eb:SetPoint("TOPLEFT", x, OPTION_Y)
+    eb:SetNumeric(true)
+    eb:SetMaxLetters(7)
+    local function Show() local v = get(); eb:SetText(v and tostring(v) or "") end
+    local function Commit()
+        set(tonumber(eb:GetText()))
+        Show()
+        AHF:RefreshResale()
+    end
+    eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    eb:SetScript("OnEditFocusLost", Commit)
+    if tip then T.Tooltip(eb, tip[1], tip[2]) end
+    eb.Show_ = Show
+    return eb, x + width + 4
+end
+
+local function Clamp(key, v)
+    local r = AHF.RANGES[key]
+    return math.max(r[1], math.min(r[2], math.floor(v)))
+end
+
+-- Gold, silver and copper boxes for a copper setting
+local function MoneyBoxes(parent, x, key, blankIsZero, tip)
+    local boxes = {}
+    local parts = { { "g", 10000, 44 }, { "s", 100, 26 }, { "c", 1, 26 } }
+    for _, p in ipairs(parts) do
+        local unit, size = p[2], p[3]
+        local eb
+        eb, x = NumberBox(parent, x, size,
+            function()
+                local v = AHF.db[key]
+                if blankIsZero and v == 0 then return nil end
+                local part = unit == 10000 and math.floor(v / 10000) or math.floor(v / unit) % 100
+                return part
+            end,
+            function(n)
+                local v = AHF.db[key]
+                local old = unit == 10000 and math.floor(v / 10000) or math.floor(v / unit) % 100
+                AHF.db[key] = Clamp(key, v + ((n or 0) - old) * unit)
+                for _, b in ipairs(boxes) do b.Show_() end
+            end, tip)
+        local fs = Text(parent, p[1], "GameFontNormalSmall", C.gold)
+        fs:SetPoint("TOPLEFT", x - 1, OPTION_Y - 5)
+        x = x + 12
+        boxes[#boxes + 1] = eb
+    end
+    return boxes, x
+end
+
+BuildOptions = function(panel)
+    local o = {}
+    local x = 12
+    local _
+    _, x = Label(panel, "Min profit", x)
+    o.minProfit, x = MoneyBoxes(panel, x, "resaleMinProfit", false,
+        { "Minimum profit", "Only list deals that make at least this much after the auction house's 5% cut." })
+    _, x = Label(panel, "Min %", x + 10)
+    o.minPct, x = NumberBox(panel, x, 40,
+        function() return AHF.db.resaleMinPct end,
+        function(n) AHF.db.resaleMinPct = Clamp("resaleMinPct", n or 0) end,
+        { "Minimum percent", "Only list deals whose profit is at least this percent of what you pay." })
+    _, x = Label(panel, "Seen", x + 10)
+    o.minSeen, x = NumberBox(panel, x, 30,
+        function() return AHF.db.resaleMinSeen end,
+        function(n) AHF.db.resaleMinSeen = Clamp("resaleMinSeen", n or 1) end,
+        { "Seen at least", "Only list items AHF has seen in at least this many scans in the days set next, so a price seen once can't fool it." })
+    _, x = Label(panel, "times in", x)
+    o.seenDays, x = NumberBox(panel, x, 30,
+        function() return AHF.db.resaleSeenDays end,
+        function(n) AHF.db.resaleSeenDays = Clamp("resaleSeenDays", n or 7) end,
+        { "Days", "How many days back the scans count for Seen." })
+    _, x = Label(panel, "days", x)
+    _, x = Label(panel, "Max price", x + 10)
+    o.maxPrice, x = MoneyBoxes(panel, x, "resaleMaxPrice", true,
+        { "Maximum price", "Only list listings that cost at most this much. Leave it blank for no limit." })
+    panel.options = o
+    AHF.resaleOptions = o
+end
+
+local function ShowOptions()
+    local o = panel and panel.options
+    if not o then return end
+    for _, b in ipairs(o.minProfit) do b.Show_() end
+    for _, b in ipairs(o.maxPrice) do b.Show_() end
+    o.minPct.Show_(); o.minSeen.Show_(); o.seenDays.Show_()
 end
 
 local function BuildPanel(f)
@@ -188,13 +303,15 @@ local function BuildPanel(f)
     info:SetPoint("RIGHT", panel, "RIGHT", -12, 0)
     panel.info = info
 
+    BuildOptions(panel)
+
     -- Headers: click to sort, again to turn the order round
     local x = 12
     panel.headers = {}
     for _, c in ipairs(COLUMNS) do
         local h = CreateFrame("Button", nil, panel)
         h:SetSize(c.w, 20)
-        h:SetPoint("TOPLEFT", x, -34)
+        h:SetPoint("TOPLEFT", x, -62)
         T.Fill(h, C.card)
         local fs = Text(h, c.label, "GameFontNormalSmall", C.orange)
         if c.left then fs:SetPoint("LEFT", 6, 0) else fs:SetPoint("RIGHT", -6, 0); fs:SetJustifyH("RIGHT") end
@@ -213,7 +330,7 @@ local function BuildPanel(f)
     for i = 1, ROWS do
         local row = CreateFrame("Button", nil, panel)
         row:SetSize(x - 14, ROW_H)
-        row:SetPoint("TOPLEFT", 12, -56 - (i - 1) * ROW_H)
+        row:SetPoint("TOPLEFT", 12, -84 - (i - 1) * ROW_H)
         if i % 2 == 0 then
             local bg = row:CreateTexture(nil, "BACKGROUND")
             bg:SetAllPoints()
@@ -250,7 +367,7 @@ local function BuildPanel(f)
     local bar = CreateFrame("Slider", nil, panel)
     bar:SetOrientation("VERTICAL")
     bar:SetWidth(6)
-    bar:SetPoint("TOPLEFT", panel, "TOPLEFT", x + 2, -56)
+    bar:SetPoint("TOPLEFT", panel, "TOPLEFT", x + 2, -84)
     bar:SetHeight(ROWS * ROW_H)
     T.Fill(bar, C.offTrack)
     local thumb = bar:CreateTexture(nil, "OVERLAY")
@@ -275,7 +392,7 @@ local function BuildPanel(f)
     total:SetPoint("BOTTOMLEFT", 12, 10)
     panel.total = total
 
-    panel:SetScript("OnShow", function() AHF:RefreshResale() end)
+    panel:SetScript("OnShow", function() ShowOptions(); AHF:RefreshResale() end)
     panel:Hide()
     AHF.resaleRows = rows
 end

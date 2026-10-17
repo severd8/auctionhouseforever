@@ -248,4 +248,16 @@ function P.Average(recs, days, today)
     return floor(sum / weight + 0.5), scans
 end
 
+-- How many scans saw the item in the last `days` days (a day with only a
+-- browse result counts once)
+function P.Scans(recs, days, today)
+    local scans = 0
+    for i = #recs, 1, -1 do
+        local r = recs[i]
+        if r.d + r.s - 1 <= today - days then break end
+        scans = scans + max(r.n, 1)
+    end
+    return scans
+end
+
 return P

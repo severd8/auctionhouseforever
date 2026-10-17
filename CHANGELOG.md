@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.0
+
+- **Resale options.** A strip at the top of the Resale tab sets what gets listed, and remembers it:
+  - **Min profit** (gold, silver, copper): 1 silver to start with.
+  - **Min %**: 10% to start with.
+  - **Seen N times in X days**: only items AHF has seen in at least that many scans lately, so one odd price can't fool it. 3 times in 7 days to start with; the top line says how many more deals this hides.
+  - **Max price**: nothing dearer than this. Blank means no limit.
+- The list updates as soon as you press Enter or click away from a box.
+
 ## 2.2.1
 
 - **Resale tab fixes.** The line at the top no longer hides behind the portrait. Items the game hadn't loaded yet showed a blank name; they now show "Loading item..." and fill in a moment later, and clicking them still finds them. The Seller column is gone (the game doesn't tell addons who's selling), so item names get more room. Market is now **Market each**, since Buyout is for the whole stack. When there are more than 500 deals, the top line says it's showing the best 500.

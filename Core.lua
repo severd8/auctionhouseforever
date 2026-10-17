@@ -9,7 +9,18 @@ _G.AuctionHouseForever = AHF
 AHF.DEFAULTS = {
     tooltip = true,          -- show AHF prices in item tooltips
     scanChat = true,         -- say in chat when a full scan finishes
+    resaleMinProfit = 100,   -- Resale tab: copper
+    resaleMinPct = 10,       -- percent
+    resaleMinSeen = 3,       -- seen in at least this many scans ...
+    resaleSeenDays = 7,      -- ... in this many days
+    resaleMaxPrice = 0,      -- copper, 0 = no limit
     cooldown = 0,            -- minutes to wait between full scans (0: none; Forever allowed one straight after another in testing)
+}
+
+-- Allowed values of the number settings
+AHF.RANGES = {
+    resaleMinProfit = { 0, 1e9 }, resaleMinPct = { 0, 10000 }, resaleMinSeen = { 1, 999 },
+    resaleSeenDays = { 1, 365 }, resaleMaxPrice = { 0, 1e11 },
 }
 
 AHF.BUDGET = 8               -- milliseconds of work per frame for background jobs
@@ -82,6 +93,7 @@ function AHF:LoadSaved()
         if type(s[k]) ~= type(v) then s[k] = v end
     end
     s.cooldown = math.max(0, math.min(60, s.cooldown))
+    for k, range in pairs(self.RANGES) do s[k] = math.max(range[1], math.min(range[2], math.floor(s[k]))) end
     AuctionHouseForeverSettings = s
     self.db = s
 end

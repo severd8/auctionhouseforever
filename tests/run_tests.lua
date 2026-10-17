@@ -253,6 +253,9 @@ do
     for _ = 1, 10 do table.insert(AH.replicate, { 6001, 1, 1000 }) end
     FireEvent("REPLICATE_ITEM_LIST_UPDATE")
     RunJobs()
+    eq(AHF.db.resaleMinSeen, 3, "default: seen 3 times ..."); eq(AHF.db.resaleSeenDays, 7, "... in 7 days")
+    eq(#AHF:ResaleRows(), 2, "6001 has only been seen once")
+    AHF.db.resaleMinSeen = 1
     eq(AHF:UsualPrice("6001"), 1000, "usual price from this scan, the cheap one ignored")
     local list = AHF:ResaleRows()
     eq(#list, 3, "three worth reselling")
@@ -285,6 +288,31 @@ do
     eq(SEARCHES[#SEARCHES], "Item 6000", "searched for it")
     eq(AuctionHouseFrame.displayMode, AuctionHouseFrameDisplayMode.Buy, "on the Buy tab")
     eq(panel:IsShown(), false, "Resale page closed")
+    -- the options strip
+    Click(tab)
+    local o = AHF.resaleOptions
+    eq(o.minProfit[1]:GetText(), "0", "min profit gold"); eq(o.minProfit[2]:GetText(), "1", "silver"); eq(o.minProfit[3]:GetText(), "0", "copper")
+    eq(o.maxPrice[1]:GetText(), "", "no max price: blank")
+    eq(o.minPct:GetText(), "10"); eq(o.minSeen:GetText(), "1"); eq(o.seenDays:GetText(), "7")
+    local function Type(box, text) box:SetFocus(); box:SetText(text); box:ClearFocus() end
+    Type(o.minProfit[2], "9")                       -- 9 silver: only the 1612 one
+    eq(AHF.db.resaleMinProfit, 900, "saved in copper")
+    has(panel.info:GetText(), "1 listing below the usual price", "list updated")
+    Type(o.minProfit[2], "1")
+    Type(o.minPct, "60")                            -- 53% one drops out
+    has(panel.info:GetText(), "2 listings below")
+    Type(o.minPct, "10")
+    Type(o.maxPrice[2], "6")                        -- at most 6 silver: the 3000 (30s) stack drops out
+    eq(AHF.db.resaleMaxPrice, 600, "max price saved")
+    has(panel.info:GetText(), "2 listings below")
+    Type(o.maxPrice[2], "")
+    eq(AHF.db.resaleMaxPrice, 0, "blank again: no limit")
+    eq(o.maxPrice[1]:GetText(), "", "shown blank")
+    Type(o.minSeen, "2")
+    has(panel.info:GetText(), "(1 more seen too few times)", "says how many the seen option hides")
+    Type(o.minSeen, "1")
+    Type(o.minSeen, "0")
+    eq(AHF.db.resaleMinSeen, 1, "at least 1")
     -- only the best are kept, and the page says so
     AHF.RESALE_MAX = 2
     Click(tab)
