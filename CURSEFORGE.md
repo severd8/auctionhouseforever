@@ -19,7 +19,7 @@ Type `/ahf` for the window, or `/ahf scan` at the auction house.
 
 It works alongside Auctionator. It never buys, bids or posts anything for you.
 
-Coming next: sharing prices with other players who have the addon, so you get fresh prices without scanning. Then price history in tooltips, a price graph, a deals list and posting prices.
+Coming next: sharing prices with other players who have the addon, so you get fresh prices without scanning. Then a price graph and posting prices.
 
 See the **Changelog** for what's new in each version.
 
