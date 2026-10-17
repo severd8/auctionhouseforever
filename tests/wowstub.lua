@@ -170,11 +170,14 @@ C_AddOns = { GetAddOnMetadata = function() return "@project-version@" end }
 SELL_PRICES = { [3824] = 250, [3829] = 100, [2589] = 13 }
 ITEMS = {}
 C_Item = {}
+UNLOADED, LOAD_REQUESTS = {}, {}   -- items the game hasn't loaded yet
+function C_Item.RequestLoadItemDataByID(id) LOAD_REQUESTS[#LOAD_REQUESTS + 1] = id end
 function C_Item.GetItemInfo(item)
     local id = tonumber(item) or tonumber(tostring(item):match("item:(%d+)"))
-    if not id then return nil end
+    if not id or UNLOADED[id] then return nil end
     local i = ITEMS[id] or { 1, 1, 7 }
-    return "Item " .. id, tostring(item), i[1], i[2], 1, "", "", 20, "", 0, SELL_PRICES[id] or 0, i[3]
+    local link = tonumber(item) and ItemLink(id) or tostring(item)
+    return "Item " .. id, link, i[1], i[2], 1, "", "", 20, "", 0, SELL_PRICES[id] or 0, i[3]
 end
 function ItemLink(id, suffix)
     return "|cffffffff|Hitem:" .. id .. ":0:0:0:0:0:" .. (suffix or 0) .. ":0:20:0:0:0:0|h[Item " .. id .. "]|h|r"
@@ -206,14 +209,16 @@ AH = { replicate = {}, commodities = {}, items = {}, full = {}, replicateCalls =
 C_AuctionHouse = {}
 function C_AuctionHouse.ReplicateItems() AH.replicateCalls = AH.replicateCalls + 1 end
 function C_AuctionHouse.GetNumReplicateItems() return #AH.replicate end
+-- an item in UNLOADED comes without its name or link, as when the game hasn't loaded it
 function C_AuctionHouse.GetReplicateItemInfo(i)
     local r = AH.replicate[i + 1]
     if not r then return nil end
-    return "Item " .. r[1], 1, r[2], 1, true, 1, "", 0, 0, r[3], 0, nil, nil, "Seller", nil, 0, r[1], true
+    local loaded = not UNLOADED[r[1]]
+    return loaded and ("Item " .. r[1]) or nil, 1, r[2], 1, true, 1, "", 0, 0, r[3], 0, nil, nil, nil, nil, 0, r[1], loaded
 end
 function C_AuctionHouse.GetReplicateItemLink(i)
     local r = AH.replicate[i + 1]
-    return r and ItemLink(r[1], r[4])
+    return r and not UNLOADED[r[1]] and ItemLink(r[1], r[4]) or nil
 end
 function C_AuctionHouse.GetBrowseResults() return AH.browse or {} end
 function C_AuctionHouse.GetNumCommoditySearchResults(id) return #(AH.commodities[id] or {}) end

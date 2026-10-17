@@ -269,7 +269,8 @@ function AHF:MarketPrice(itemKey, itemID)
 end
 
 -- "AHF seen in N scans over D days:" and the 14, 7 and 3 day averages (market
--- value, or the lowest price on days without one, weighted by scans)
+-- value, or the lowest price on days without one, weighted by scans); the 14 and
+-- 7 day ones only with more than 7 and 3 days of data
 AHF.AVERAGE_DAYS = { 14, 7, 3 }
 
 function AHF:HistoryLines(key, id)
@@ -281,8 +282,11 @@ function AHF:HistoryLines(key, id)
     for _, r in ipairs(recs) do scans = scans + math.max(r.n, 1) end
     local days = today - recs[1].d + 1
     local lines = {}
-    for _, d in ipairs(self.AVERAGE_DAYS) do
-        local avg = P.Average(recs, d, today)
+    -- a longer average only once there's data from before the shorter one
+    -- (with a day or two of data, all three would be the same number)
+    for i, d in ipairs(self.AVERAGE_DAYS) do
+        local shorter = self.AVERAGE_DAYS[i + 1]
+        local avg = (not shorter or days > shorter) and P.Average(recs, d, today)
         if avg then lines[#lines + 1] = { "  " .. d .. " day average", self.Money(avg) } end
     end
     if #lines == 0 then return nil end

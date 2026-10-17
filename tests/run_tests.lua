@@ -259,7 +259,7 @@ do
     eq(AHF:UsualPrice("6000"), 971, "14 day average with today")
     eq(list[1].key, "6000"); eq(list[1].profit, 1612); eq(math.floor(list[1].pct), 53); eq(list[1].qty, 5)
     eq(list[2].key, "6001"); eq(list[2].profit, 850)
-    eq(list[3].profit, 422); eq(math.floor(list[3].pct), 84); eq(list[3].seller, "Seller")
+    eq(list[3].profit, 422); eq(math.floor(list[3].pct), 84)
 
     -- the tab
     local tab = AHF.resaleTab
@@ -272,7 +272,8 @@ do
     has(panel.total:GetText(), AHF.Money(1612 + 850 + 422))
     local row1 = AHF.resaleRows[1]
     eq(row1:IsShown(), true); eq(row1.cells.pct:GetText(), "53%"); eq(row1.cells.profit:GetText(), AHF.Money(1612))
-    eq(row1.cells.qty:GetText(), "5"); eq(row1.cells.usual:GetText(), AHF.Money(971)); eq(row1.cells.seller:GetText(), "Seller")
+    eq(row1.cells.qty:GetText(), "5"); eq(row1.cells.usual:GetText(), AHF.Money(971))
+    eq(row1.cells.seller, nil, "no Seller column (Forever doesn't give the seller)")
     eq(AHF.resaleRows[4]:IsShown(), false, "empty rows hidden")
     -- sort by percent
     Click(panel.headers.pct)
@@ -284,6 +285,29 @@ do
     eq(SEARCHES[#SEARCHES], "Item 6000", "searched for it")
     eq(AuctionHouseFrame.displayMode, AuctionHouseFrameDisplayMode.Buy, "on the Buy tab")
     eq(panel:IsShown(), false, "Resale page closed")
+    -- only the best are kept, and the page says so
+    AHF.RESALE_MAX = 2
+    Click(tab)
+    has(panel.info:GetText(), "3 listings below the usual price (the best 2 shown)")
+    has(panel.total:GetText(), "resell these 2: " .. AHF.Money(1612 + 850))
+    AHF.RESALE_MAX = 500
+    -- an item the game hasn't loaded yet: no name or link in the scan
+    UNLOADED[6001] = true
+    SERVER_TIME = SERVER_TIME + 120
+    FireEvent("REPLICATE_ITEM_LIST_UPDATE")
+    RunJobs()
+    Click(tab)
+    local loadingRow
+    for _, r in ipairs(AHF.resaleRows) do local d = rawget(r, "data") if d and d.key == "6001" then loadingRow = r end end
+    assert(loadingRow, "still listed")
+    has(loadingRow.cells.name:GetText(), "Loading item 6001")
+    eq(LOAD_REQUESTS[#LOAD_REQUESTS], 6001, "asked the game for it")
+    UNLOADED[6001] = nil
+    FireEvent("GET_ITEM_INFO_RECEIVED", 6001, true)
+    has(loadingRow.cells.name:GetText(), "Item 6001", "name once it arrives")
+    Click(loadingRow)
+    eq(SEARCHES[#SEARCHES], "Item 6001", "and it can be searched")
+    Click(tab)
     -- before any full scan
     local keep = AHF.lastScan
     AHF.lastScan = nil
@@ -298,10 +322,10 @@ eq(AHF.ResaleProfit(1000, 2, 1000), 900, "2 x 1000 less 5% less 1000")
 ---------------------------------------------------------------------------
 step("tooltips: AHF Vendor and AHF Market")
 local lines = HoverItem(ItemLink(3824))
-eq(#lines, 6, "vendor, market, history header and three averages")
+eq(#lines, 4, "vendor, market, history header and (one day of data) only the 3 day average")
 eq(lines[1][1], "AHF Vendor"); has(lines[1][2], "2|T", "vendor 2s 50c"); has(lines[1][2], "50|T")
 eq(lines[2][1], "AHF Market (seen 1)", "how many were listed last"); has(lines[2][2], "2|T", "market about 2s 40-60c")
-has(lines[3][1], "AHF seen in "); eq(lines[4][1], "  14 day average"); eq(lines[5][1], "  7 day average"); eq(lines[6][1], "  3 day average")
+has(lines[3][1], "AHF seen in "); eq(lines[4][1], "  3 day average")
 lines = HoverItem(ItemLink(4306))
 eq(lines[1][1], "AHF Market (seen 60)"); has(lines[1][2], "9|T", "lowest price when there's no market value")
 lines = HoverItem(ItemLink(15210, 1019))
@@ -310,7 +334,7 @@ eq(#HoverItem(ItemLink(77777)), 0, "nothing known, no lines")
 AHF:Slash("tooltip")
 eq(#HoverItem(ItemLink(3824)), 0, "turned off")
 AHF:Slash("tooltip")
-eq(#HoverItem(ItemLink(3824)), 6, "back on")
+eq(#HoverItem(ItemLink(3824)), 4, "back on")
 
 ---------------------------------------------------------------------------
 step("tooltips: history and averages")
@@ -328,6 +352,12 @@ do
     eq(lines[3][1], "  14 day average"); eq(lines[3][2], AHF.Money((7 * 50000 + 7 * 10000) / 14), "14 days")
     eq(lines[4][1], "  7 day average"); eq(lines[4][2], AHF.Money(50000), "7 days")
     eq(lines[5][1], "  3 day average"); eq(lines[5][2], AHF.Money(50000), "3 days")
+    -- 5 days of data: 7 and 3 day averages, no 14
+    local five = {}
+    for d = today - 4, today do five[#five + 1] = { d = d, s = 1, m = 1, v = 100, q = 1, n = 1, t = d * DAY } end
+    realm.items["5002"] = five
+    lines = HoverItem(ItemLink(5002))
+    eq(#lines, 4, "market, header, 7 and 3"); eq(lines[3][1], "  7 day average"); eq(lines[4][1], "  3 day average")
     -- only old data: no averages, no header
     realm.items["5001"] = { { d = today - 40, s = 7, m = 1, v = 9, q = 1, n = 1, t = 0 } }
     lines = HoverItem(ItemLink(5001))
@@ -430,7 +460,7 @@ AHF = ns.AHF
 eq(AHF.db.cooldown, 10, "settings kept")
 eq(AHF:Stats(), itemsBefore, "items kept")
 eq(AHF:Records("3824")[1].m, 240, "prices kept")
-eq(#HoverItem(ItemLink(3824)), 6, "tooltips after loading")
+eq(#HoverItem(ItemLink(3824)), 4, "tooltips after loading")
 
 step("broken saved data doesn't stop it")
 ALL_FRAMES = {}

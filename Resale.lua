@@ -11,7 +11,7 @@ local C, Text = T.C, T.Text
 AHF.AH_CUT = 0.05            -- the auction house keeps 5% of a sale
 AHF.RESALE_MIN_PROFIT = 100  -- copper (1 silver): smaller ones aren't worth the trip
 AHF.RESALE_MIN_PCT = 10      -- percent
-AHF.RESALE_MAX = 500         -- rows kept
+AHF.RESALE_MAX = 500         -- rows kept (the best ones)
 AHF.RESALE_DAYS = 14         -- the usual price: the 14 day average (else the newest market price)
 
 local TAB_ID = "AuctionHouseForeverResale"
@@ -37,7 +37,8 @@ function AHF.ResaleProfit(usual, qty, buyout)
     return profit, buyout > 0 and profit * 100 / buyout or 0
 end
 
--- Rows: { key, link, name, qty, buyout, usual, profit, pct, seller }, best profit first
+-- Rows: { key, itemID, link, name, qty, buyout, usual, profit, pct }, best profit
+-- first; and how many there were before keeping the best RESALE_MAX
 function AHF:ResaleRows()
     local scan = self.lastScan
     if not scan then return nil end
@@ -49,25 +50,40 @@ function AHF:ResaleRows()
                 local qty, buyout = l[2], l[3]
                 local profit, pct = self.ResaleProfit(usual, qty, buyout)
                 if profit >= self.RESALE_MIN_PROFIT and pct >= self.RESALE_MIN_PCT then
-                    rows[#rows + 1] = { key = key, link = scan.links[key], name = scan.names[key], qty = qty,
-                        buyout = buyout, usual = usual, profit = profit, pct = pct, seller = l[4] }
+                    rows[#rows + 1] = { key = key, itemID = scan.itemIDs and scan.itemIDs[key], link = scan.links[key],
+                        name = scan.names[key], qty = qty, buyout = buyout, usual = usual, profit = profit, pct = pct }
                 end
             end
         end
     end
     table.sort(rows, function(a, b) return a.profit > b.profit end)
-    while #rows > self.RESALE_MAX do table.remove(rows) end
-    return rows
+    local found = #rows
+    for i = #rows, self.RESALE_MAX + 1, -1 do rows[i] = nil end
+    return rows, found
 end
 
 ---------------------------------------------------------------------------
 -- Finding a row's item on the Buy tab
 ---------------------------------------------------------------------------
+-- The scan doesn't always have an item's name and link (the game hadn't loaded
+-- the item yet): ask the game for it, and draw again when it arrives
+local waiting = {}
 local function ItemName(row)
     if row.name then return row.name end
     local get = C_Item and C_Item.GetItemInfo or GetItemInfo
-    local name = get and row.link and get(row.link)
-    return name or (row.link and row.link:match("%[(.-)%]"))
+    local name, link
+    if get and (row.link or row.itemID) then name, link = get(row.link or row.itemID) end
+    if name then
+        row.name = name
+        if not row.link then row.link = link end
+        return name
+    end
+    if row.link then return row.link:match("%[(.-)%]") end
+    if row.itemID and not waiting[row.itemID] and C_Item and C_Item.RequestLoadItemDataByID then
+        waiting[row.itemID] = true
+        C_Item.RequestLoadItemDataByID(row.itemID)
+    end
+    return nil
 end
 
 function AHF:FindOnBuyTab(row)
@@ -88,13 +104,12 @@ end
 -- The tab's page
 ---------------------------------------------------------------------------
 local COLUMNS = {
-    { key = "name",   label = "Item",   w = 236, left = true },
-    { key = "pct",    label = "Pct",    w = 50 },
-    { key = "profit", label = "Profit", w = 110 },
-    { key = "qty",    label = "Qty",    w = 40 },
-    { key = "buyout", label = "Buyout", w = 110 },
-    { key = "usual",  label = "Market", w = 110 },
-    { key = "seller", label = "Seller", w = 110, left = true },
+    { key = "name",   label = "Item",        w = 330, left = true },
+    { key = "pct",    label = "Pct",         w = 56 },
+    { key = "profit", label = "Profit",      w = 116 },
+    { key = "qty",    label = "Qty",         w = 40 },
+    { key = "buyout", label = "Buyout",      w = 116 },
+    { key = "usual",  label = "Market each", w = 116 },
 }
 
 local panel, rows, shown = nil, {}, {}
@@ -104,7 +119,6 @@ local function Sort()
     table.sort(shown, function(a, b)
         local x, y = a[sortKey], b[sortKey]
         if sortKey == "name" then x, y = ItemName(a) or "", ItemName(b) or "" end
-        if sortKey == "seller" then x, y = a.seller or "", b.seller or "" end
         if x == y then return a.profit > b.profit end
         if sortDown then return x > y end
         return x < y
@@ -126,20 +140,20 @@ local function Draw()
         row.data = data
         row:SetShown(data ~= nil)
         if data then
-            Cell(row, COLUMNS[1], data.link or ItemName(data) or data.key)
+            local name = ItemName(data)
+            Cell(row, COLUMNS[1], data.link or name or "|cff8a8078Loading item " .. (data.itemID or data.key) .. "...|r")
             Cell(row, COLUMNS[2], string.format("%d%%", data.pct))
             Cell(row, COLUMNS[3], AHF.Money(data.profit))
             Cell(row, COLUMNS[4], tostring(data.qty))
             Cell(row, COLUMNS[5], AHF.Money(data.buyout))
             Cell(row, COLUMNS[6], AHF.Money(data.usual))
-            Cell(row, COLUMNS[7], data.seller or "")
         end
     end
 end
 
 function AHF:RefreshResale()
     if not panel or not panel:IsShown() then return end
-    local list = self:ResaleRows()
+    local list, found = self:ResaleRows()
     shown = list or {}
     Sort()
     offset = 0
@@ -149,10 +163,12 @@ function AHF:RefreshResale()
     else
         local total = 0
         for _, r in ipairs(shown) do total = total + r.profit end
-        panel.info:SetText(string.format("From your full scan %s: %d listing%s below the usual price. Click one to find it on the Buy tab.",
-            AHF.Now() - self.lastScan.t < 60 and "just now" or (AHF.Age(AHF.Now() - self.lastScan.t) .. " ago"),
-            #shown, #shown == 1 and "" or "s"))
-        panel.total:SetText(#shown > 0 and ("Profit if you resell them all: " .. AHF.Money(total)) or "")
+        local count = found > #shown and string.format("%d listings below the usual price (the best %d shown)", found, #shown)
+            or string.format("%d listing%s below the usual price", found, found == 1 and "" or "s")
+        panel.info:SetText(string.format("From your full scan %s: %s. Click one to find it on the Buy tab.",
+            AHF.Now() - self.lastScan.t < 60 and "just now" or (AHF.Age(AHF.Now() - self.lastScan.t) .. " ago"), count))
+        panel.total:SetText(#shown > 0 and ("Profit if you resell " .. (found > #shown and "these " .. #shown or "them all")
+            .. ": " .. AHF.Money(total)) or "")
     end
     Draw()
 end
@@ -166,8 +182,9 @@ local function BuildPanel(f)
     T.Fill(panel, C.win)
     AHF.resalePanel = panel
 
+    -- starts right of the auction house's round portrait, which overlaps the top left
     local info = Text(panel, "", "GameFontHighlight")
-    info:SetPoint("TOPLEFT", 12, -10)
+    info:SetPoint("TOPLEFT", 64, -10)
     info:SetPoint("RIGHT", panel, "RIGHT", -12, 0)
     panel.info = info
 
@@ -183,7 +200,7 @@ local function BuildPanel(f)
         if c.left then fs:SetPoint("LEFT", 6, 0) else fs:SetPoint("RIGHT", -6, 0); fs:SetJustifyH("RIGHT") end
         h:SetScript("OnClick", function()
             if sortKey == c.key then sortDown = not sortDown
-            else sortKey, sortDown = c.key, not (c.key == "name" or c.key == "seller") end
+            else sortKey, sortDown = c.key, c.key ~= "name" end
             Sort()
             Draw()
         end)
@@ -280,5 +297,10 @@ end
 
 AHF:On("ADDON_LOADED", function(name)
     if name == "Blizzard_AuctionHouseUI" then AHF:MakeResaleTab() end
+end)
+AHF:On("GET_ITEM_INFO_RECEIVED", function(itemID)
+    if not waiting[itemID] then return end
+    waiting[itemID] = nil
+    if panel and panel:IsShown() then Draw() end
 end)
 AHF:On("AUCTION_HOUSE_SHOW", function() AHF:MakeResaleTab() end)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.1
+
+- **Resale tab fixes.** The line at the top no longer hides behind the portrait. Items the game hadn't loaded yet showed a blank name; they now show "Loading item..." and fill in a moment later, and clicking them still finds them. The Seller column is gone (the game doesn't tell addons who's selling), so item names get more room. Market is now **Market each**, since Buyout is for the whole stack. When there are more than 500 deals, the top line says it's showing the best 500.
+- **Tooltip averages.** The 7 and 14 day averages only show once there's more than 3 and 7 days of prices, so a new item doesn't show the same number three times.
+
 ## 2.2.0
 
 - **Resale tab.** A new **Resale** tab at the bottom of the auction house lists the listings from your last full scan that sell below their usual price, with the profit and percent profit if you buy and post them again. The profit already takes off the auction house's 5% cut. Only deals worth at least 1 silver and 10% are listed, best first. Click a column header to sort by it. Click a row to search for that item on the Buy tab, then buy it with the game's own button.

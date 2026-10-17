@@ -61,7 +61,7 @@ function AHF:ReadFullScan()
     self:RefreshScanButton()
     self:RunJob("full scan", function()
         local total = C_AuctionHouse.GetNumReplicateItems() or 0
-        local byKey, keys, ids, links, names = {}, {}, {}, {}, {}
+        local byKey, keys, ids, links, names, itemIDs = {}, {}, {}, {}, {}, {}
         local listings, noBuyout, distinctIDs = 0, 0, 0
         scan.total, scan.done = total, 0
         for i = 0, total - 1 do
@@ -71,8 +71,9 @@ function AHF:ReadFullScan()
                 if not ids[itemID] then ids[itemID] = true; distinctIDs = distinctIDs + 1 end
                 if buyout > 0 and count > 0 then
                     local list = byKey[key]
-                    if not list then list = {}; byKey[key] = list; keys[#keys + 1] = key end
-                    -- price per item, quantity, buyout, seller (the Resale tab uses the last two)
+                    if not list then list = {}; byKey[key] = list; keys[#keys + 1] = key; itemIDs[key] = itemID end
+                    -- price per item, quantity, buyout, seller (the Resale tab uses the last two;
+                    -- Forever doesn't give addons the seller, so it's usually nil)
                     list[#list + 1] = { math.ceil(buyout / count), count, buyout, owner }
                     if link and not links[key] then links[key] = link end
                     if name and not names[key] then names[key] = name end
@@ -92,7 +93,7 @@ function AHF:ReadFullScan()
             if n % 20 == 0 then self:Pause() end
         end
         -- every listing of this scan, for the Resale tab (kept until the next scan or logout)
-        self.lastScan = { t = now, byKey = byKey, keys = keys, links = links, names = names }
+        self.lastScan = { t = now, byKey = byKey, keys = keys, links = links, names = names, itemIDs = itemIDs }
         scan.result = { t = now, listings = listings, items = distinctIDs, keys = #keys, noBuyout = noBuyout,
             secs = math.floor((debugprofilestop() - scan.started) / 100 + 0.5) / 10 }
     end, function()

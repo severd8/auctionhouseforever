@@ -6,6 +6,10 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.2.1", date = "2026-10-17", items = {
+        "Resale tab: no more blank item names, no empty Seller column, top line clear of the portrait, Market each.",
+        "Tooltips show the 7 and 14 day averages only once there's enough history.",
+    } },
     { version = "2.2.0", date = "2026-10-17", items = {
         "Resale tab in the auction house: listings below their usual price, with profit and percent (after the 5% cut).",
         "Click a Resale row to search for it on the Buy tab; click a header to sort.",
