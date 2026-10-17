@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.4
+
+- **Resale tab has more room at the top.** The top line is shorter and stays on one line ("248 listings below the usual price, from your full scan 6 min ago."), so it no longer runs into the options. The options, the column headers and the list each sit a little lower. "Click a row to find it on the Buy tab" moved to the bottom right. Thin lines above the column headers and below the last row frame the list.
+
 ## 2.4.3
 
 - **Price sharing fix.** The game adds your realm to your name in addon messages, and AHF didn't take it off. So it heard its own messages as if from someone else, and a player who was asked for their scan never recognised the request and never sent it. Both are fixed.

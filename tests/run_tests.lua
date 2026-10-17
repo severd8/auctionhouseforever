@@ -283,6 +283,13 @@ do
     local panel = AHF.resalePanel
     eq(panel:IsShown(), true, "page shown")
     has(panel.info:GetText(), "3 listings below the usual price")
+    has(panel.info:GetText(), "from your full scan", "one short top line")
+    assert(#panel.info:GetText() < 110, "short enough for one line: " .. panel.info:GetText())
+    has(panel.hint:GetText(), "Click a row")
+    assert(panel.lineTop and panel.lineBottom, "lines above and below the list")
+    local function y(o) return o.__points[1][3] end
+    assert(y(panel.lineTop) > y(panel.headers.name), "top line above the headers")
+    assert(y(panel.lineBottom) < y(AHF.resaleRows[#AHF.resaleRows]) - 18, "bottom line below the last row")
     has(panel.total:GetText(), AHF.Money(1612 + 850 + 422))
     local row1 = AHF.resaleRows[1]
     eq(row1:IsShown(), true); eq(row1.cells.pct:GetText(), "53%"); eq(row1.cells.profit:GetText(), AHF.Money(1612))

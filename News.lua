@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.4.4", date = "2026-10-17", items = {
+        "Resale tab: shorter top line that no longer runs into the options, and more space between the rows at the top.",
+    } },
     { version = "2.4.3", date = "2026-10-17", items = {
         "Price sharing fix: a player asked for their scan now sends it (names came with the realm attached).",
     } },

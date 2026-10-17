@@ -16,6 +16,7 @@ AHF.RESALE_DAYS = 14         -- the usual price: the 14 day average (else the ne
 
 local TAB_ID = "AuctionHouseForeverResale"
 local ROWS, ROW_H = 20, 18
+local HEADER_Y, ROWS_Y = -72, -94   -- below the top line (-10) and the options (-38)
 
 ---------------------------------------------------------------------------
 -- The numbers
@@ -186,8 +187,8 @@ function AHF:RefreshResale()
         if unseen > 0 then
             count = count .. string.format(" (%d more seen too few times)", unseen)
         end
-        panel.info:SetText(string.format("From your full scan %s: %s. Click one to find it on the Buy tab.",
-            AHF.Now() - self.lastScan.t < 60 and "just now" or (AHF.Age(AHF.Now() - self.lastScan.t) .. " ago"), count))
+        panel.info:SetText(string.format("%s, from your full scan %s.", count,
+            AHF.Now() - self.lastScan.t < 60 and "just now" or (AHF.Age(AHF.Now() - self.lastScan.t) .. " ago")))
         panel.total:SetText(#shown > 0 and ("Profit if you resell " .. (found > #shown and "these " .. #shown or "them all")
             .. ": " .. AHF.Money(total)) or "")
     end
@@ -199,7 +200,7 @@ end
 -- maximum price. Saved; the list updates as soon as a box loses focus or
 -- Enter is pressed.
 ---------------------------------------------------------------------------
-local OPTION_Y = -34
+local OPTION_Y = -38
 
 local function Label(parent, text, x)
     local fs = Text(parent, text, "GameFontNormalSmall", C.muted)
@@ -323,6 +324,7 @@ local function BuildPanel(f)
     local info = Text(panel, "", "GameFontHighlight")
     info:SetPoint("TOPLEFT", 64, -10)
     info:SetPoint("RIGHT", panel, "RIGHT", -12, 0)
+    info:SetWordWrap(false)
     panel.info = info
 
     BuildOptions(panel)
@@ -333,7 +335,7 @@ local function BuildPanel(f)
     for _, c in ipairs(COLUMNS) do
         local h = CreateFrame("Button", nil, panel)
         h:SetSize(c.w, 20)
-        h:SetPoint("TOPLEFT", x, -62)
+        h:SetPoint("TOPLEFT", x, HEADER_Y)
         T.Fill(h, C.card)
         local fs = Text(h, c.label, "GameFontNormalSmall", C.orange)
         if c.left then fs:SetPoint("LEFT", 6, 0) else fs:SetPoint("RIGHT", -6, 0); fs:SetJustifyH("RIGHT") end
@@ -348,11 +350,23 @@ local function BuildPanel(f)
         x = x + c.w + 2
     end
 
+    -- A thin line above the headers and one below the last row frame the list
+    local function Line(y)
+        local t = panel:CreateTexture(nil, "ARTWORK")
+        t:SetColorTexture(unpack(C.edge))
+        t:SetHeight(1)
+        t:SetPoint("TOPLEFT", 12, y)
+        t:SetWidth(x - 14)
+        return t
+    end
+    panel.lineTop = Line(HEADER_Y + 4)
+    panel.lineBottom = Line(ROWS_Y - ROWS * ROW_H - 3)
+
     -- Rows
     for i = 1, ROWS do
         local row = CreateFrame("Button", nil, panel)
         row:SetSize(x - 14, ROW_H)
-        row:SetPoint("TOPLEFT", 12, -84 - (i - 1) * ROW_H)
+        row:SetPoint("TOPLEFT", 12, ROWS_Y - (i - 1) * ROW_H)
         if i % 2 == 0 then
             local bg = row:CreateTexture(nil, "BACKGROUND")
             bg:SetAllPoints()
@@ -389,7 +403,7 @@ local function BuildPanel(f)
     local bar = CreateFrame("Slider", nil, panel)
     bar:SetOrientation("VERTICAL")
     bar:SetWidth(6)
-    bar:SetPoint("TOPLEFT", panel, "TOPLEFT", x + 2, -84)
+    bar:SetPoint("TOPLEFT", panel, "TOPLEFT", x + 2, ROWS_Y)
     bar:SetHeight(ROWS * ROW_H)
     T.Fill(bar, C.offTrack)
     local thumb = bar:CreateTexture(nil, "OVERLAY")
@@ -413,6 +427,9 @@ local function BuildPanel(f)
     local total = Text(panel, "", "GameFontNormal")
     total:SetPoint("BOTTOMLEFT", 12, 10)
     panel.total = total
+    local hint = Text(panel, "Click a row to find it on the Buy tab.", "GameFontDisableSmall")
+    hint:SetPoint("BOTTOMRIGHT", -14, 12)
+    panel.hint = hint
 
     panel:SetScript("OnShow", function() ShowOptions(); AHF:RefreshResale() end)
     panel:Hide()
