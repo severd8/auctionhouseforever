@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.4.0
+
+- **Price sharing.** Players with AuctionHouse Forever now share their full scans with each other, so you get fresh prices without scanning yourself. It all happens on a hidden channel that never shows in your chat.
+  - After a full scan, the addon tells everyone listening. Anyone whose prices are older asks for it, and one copy goes out to all of them. It takes a few minutes, because the game only allows about one addon message a second.
+  - When you log in, it asks whether anyone has newer prices than yours.
+  - Only your own realm and faction.
+  - A shared price more than 10 times higher or lower than what you already have is left out, so one bad sender can't spoil prices you know.
+  - Chat says when prices arrive: "prices for 2,800 items from Bob's scan (3 min old)".
+- **Window.** The Prices tab shows the last prices you got from others; Settings has a switch to turn sharing off.
+
 ## 2.3.2
 
 - **Full scan wait.** The auction house only sends a full scan once every 15 minutes. The Scan button now counts down to the next one (after a scan from Auctionator too), instead of letting you click and then saying the scan didn't come.

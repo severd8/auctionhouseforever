@@ -16,6 +16,7 @@ Prices.lua
 Core.lua
 Disenchant.lua
 Scan.lua
+Share.lua
 Resale.lua
 News.lua
 Options.lua

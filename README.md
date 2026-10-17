@@ -16,6 +16,7 @@ It works alongside Auctionator: a full scan started from Auctionator fills Aucti
 - **Your searches count too.** Every search you make saves the prices it shows, and so does a full scan started from Auctionator.
 - **Tooltips.** Items show **AHF Vendor** (what a vendor pays for one) and **AHF Market (seen N)**: the usual auction price for one, and how many were listed last time.
 - **Price history.** Under AHF Market: **AHF seen in N scans over D days**, then the 14, 7 and 3 day averages.
+- **Price sharing.** Players with the addon share their full scans on a hidden channel, so you get fresh prices without scanning. After a scan the addon says it has new prices; anyone who's behind asks, and one copy goes to all of them (a few minutes, since the game allows about one addon message a second). At login it asks whether anyone has newer prices. Same realm and faction only. A shared price more than 10 times higher or lower than yours is left out. Turn it off in Settings.
 - **Resale tab.** A **Resale** tab at the bottom of the auction house lists the listings from your last full scan that sell below their usual price (the 14 day average), with profit and percent profit after the auction house's 5% cut. Sort by any column; click a row to search for it on the Buy tab, then buy with the game's own button. Options at the top: minimum profit, minimum percent, seen at least N times in X days, maximum price.
 - **Disenchant value.** Weapons and armor that can be disenchanted show **AHF Disenchant**: each material's chance, times how many you usually get, times its AHF Market price, in one line. A **~** in front means some materials have no price yet.
 - **A fair market price.** The middle price of the cheapest listings, ignoring silly prices at either end, so one listing at 1 copper or 999 gold can't drag it.
@@ -42,8 +43,8 @@ Then visit an auctioneer and click **Scan**.
 
 | Tab | What's there |
 |---|---|
-| **Prices** | Your realm and faction, how many items have prices, the saved file's size, the last full scan |
-| **Settings** | Tooltip prices on or off, the chat line after a scan, a longer wait between full scans (the auction house's own 15 minutes to start with) |
+| **Prices** | Your realm and faction, how many items have prices, the saved file's size, the last full scan, the last prices from other players |
+| **Settings** | Tooltip prices on or off, price sharing on or off, the chat line after a scan, a longer wait between full scans (the auction house's own 15 minutes to start with) |
 | **What's new** | The changes in each version |
 
 ## Feedback and bug reports

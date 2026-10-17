@@ -7,6 +7,7 @@ AuctionHouse Forever saves the prices you see at the auction house, from full sc
 ## What it does
 
 - **Full scan**: click the red **Scan** button beside the auction house's Search button. It reads every listing in a few seconds and saves the prices. The auction house allows one every 15 minutes, and the button counts down to the next.
+- **Price sharing**: players with the addon share their full scans on a hidden channel, so you get fresh prices without scanning. Same realm and faction only, and a price far from what you already know is left out.
 - **Your searches count too**: every search you make saves its prices, and so does a full scan from Auctionator.
 - **Tooltips**: **AHF Vendor** (what a vendor pays) and **AHF Market (seen N)** (the usual auction price, and how many were listed last time).
 - **Price history**: how many scans over how many days, and the 14, 7 and 3 day averages, right in the tooltip.
@@ -19,7 +20,7 @@ Type `/ahf` for the window, or `/ahf scan` at the auction house.
 
 It works alongside Auctionator. It never buys, bids or posts anything for you.
 
-Coming next: sharing prices with other players who have the addon, so you get fresh prices without scanning. Then a price graph and posting prices.
+Coming next: a price graph and posting prices.
 
 See the **Changelog** for what's new in each version.
 

@@ -6,6 +6,10 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.4.0", date = "2026-10-17", items = {
+        "Price sharing: full scans go to other AHF players on your realm and faction, on a hidden channel, so you get fresh prices without scanning.",
+        "Prices far from what you already have (over 10x) are left out. Turn sharing off in Settings.",
+    } },
     { version = "2.3.2", date = "2026-10-17", items = {
         "The Scan button counts down the auction house's 15 minute wait between full scans.",
     } },

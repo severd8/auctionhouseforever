@@ -88,15 +88,18 @@ function AHF:ReadFullScan()
             if i % 50 == 0 then self:Pause() end
         end
         local now = self.Now()
+        local shareItems = {}
         for n, key in ipairs(keys) do
             local sum = P.Summarize(byKey[key])
             if sum then
                 self:Observe(key, { min = sum.min, market = sum.market, qty = sum.qty, t = now, full = true }, realm)
+                shareItems[#shareItems + 1] = { key, sum.min, sum.market, sum.qty }
             end
             if n % 20 == 0 then self:Pause() end
         end
         -- every listing of this scan, for the Resale tab (kept until the next scan or logout)
         self.lastScan = { t = now, byKey = byKey, keys = keys, links = links, names = names, itemIDs = itemIDs }
+        scan.share = { t = now, items = shareItems }
         scan.result = { t = now, listings = listings, items = distinctIDs, keys = #keys, noBuyout = noBuyout,
             secs = math.floor((debugprofilestop() - scan.started) / 100 + 0.5) / 10 }
     end, function()
@@ -109,6 +112,8 @@ function AHF:ReadFullScan()
                 r.listings, r.items, r.noBuyout, r.keys))
         end
         self:RefreshScanButton()
+        if self.Share and scan.share then self.Share:OwnScan(scan.share.t, scan.share.items) end
+        scan.share = nil
         if self.RefreshWindow then self:RefreshWindow() end
         if self.RefreshResale then self:RefreshResale() end
     end)

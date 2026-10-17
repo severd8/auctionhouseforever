@@ -304,7 +304,50 @@ function RunJobs(limit)
     return frames
 end
 
-ADDON_FILES = { "Libs/LibStub/LibStub.lua", "Libs/LibAHTab/LibAHTab.lua", "Theme.lua", "Prices.lua", "Core.lua", "Disenchant.lua", "Scan.lua", "Resale.lua", "News.lua", "Options.lua" }
+---------------------------------------------------------------------------
+-- Chat channels and addon messages
+---------------------------------------------------------------------------
+PLAYER = "Tyler"
+function UnitName() return PLAYER end
+function Ambiguate(name) return (name:gsub("%-.*$", "")) end
+CHANNELS, SENT, PREFIXES, CHAT_FILTERS, REMOVED = {}, {}, {}, {}, {}
+SEND_RESULTS = {}            -- results to give the next sends (default 0, success)
+LOCKDOWN = false
+NUM_CHAT_WINDOWS = 2
+function GetChannelName(name) return CHANNELS[name] or 0, CHANNELS[name] and name or nil end
+function JoinTemporaryChannel(name) CHANNELS[name] = CHANNELS[name] or 5 end
+function LeaveChannelByName(name) CHANNELS[name] = nil end
+for i = 1, 2 do
+    local f = newObj("ScrollingMessageFrame", "ChatFrame" .. i)
+    function f:RemoveChannel(name) REMOVED[#REMOVED + 1] = { i, name } end
+end
+function ChatFrame_AddMessageEventFilter(event, fn)
+    CHAT_FILTERS[event] = CHAT_FILTERS[event] or {}
+    table.insert(CHAT_FILTERS[event], fn)
+end
+C_ChatInfo = {
+    RegisterAddonMessagePrefix = function(p) PREFIXES[p] = true return 0 end,
+    InChatMessagingLockdown = function() return LOCKDOWN end,
+    SendAddonMessage = function(prefix, msg, chatType, target)
+        assert(#msg <= 255, "message too long: " .. #msg)
+        local r = table.remove(SEND_RESULTS, 1) or 0
+        if r == 0 then SENT[#SENT + 1] = { prefix = prefix, msg = msg, chatType = chatType, target = target } end
+        return r
+    end,
+}
+
+-- Moves the clock on, a frame at a time
+function Wait(seconds, step)
+    step = step or 0.25
+    local done = 0
+    while done < seconds do
+        FAKE_TIME = FAKE_TIME + step
+        Tick(step)
+        done = done + step
+    end
+end
+
+ADDON_FILES = { "Libs/LibStub/LibStub.lua", "Libs/LibAHTab/LibAHTab.lua", "Theme.lua", "Prices.lua", "Core.lua", "Disenchant.lua", "Scan.lua", "Share.lua", "Resale.lua", "News.lua", "Options.lua" }
 
 -- Loads the addon's files in .toc order, then the game's start-up events
 strmatch = string.match

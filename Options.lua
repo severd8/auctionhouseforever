@@ -45,6 +45,14 @@ local function BuildPrices(p)
         .. "Searches you make in the auction house are saved too.", 12, -100, PAGE_W - 24)
     AHF.ui.where, AHF.ui.stored, AHF.ui.lastScan, AHF.ui.scanCounts, AHF.ui.nextScan = where, stored, last, counts, nextScan
 
+    local shareCard = T.Card(p, "Shared prices", 0, -300, PAGE_W, 100)
+    local got = Text(shareCard, "", "GameFontHighlight")
+    got:SetPoint("TOPLEFT", 12, -30)
+    local sharing = Text(shareCard, "", "GameFontDisableSmall")
+    sharing:SetPoint("TOPLEFT", 12, -52)
+    T.Note(shareCard, "Players with AHF share their full scans with each other on a hidden channel.", 12, -72, PAGE_W - 24)
+    AHF.ui.sharedGot, AHF.ui.sharing = got, sharing
+
     AddRefresher(function()
         local realm = AHF:Realm()
         where:SetText("Realm and faction: |cffffd100" .. AHF:RealmKey() .. "|r")
@@ -61,6 +69,20 @@ local function BuildPrices(p)
         end
         local wait = AHF:ScanWait()
         nextScan:SetText(wait > 0 and ("Next full scan possible in " .. AHF.Clock(wait)) or "A full scan is possible now")
+        local g = realm.shared[1]
+        if g then
+            got:SetText(string.format("Last from others: %d items from %s's scan, %s ago", g.items, g.by, AHF.Age(AHF.Now() - g.got)))
+        else
+            got:SetText("Nothing from other players yet")
+        end
+        local S = AHF.Share
+        if not AHF.db.share then
+            sharing:SetText("Sharing is off (Settings)")
+        else
+            local h = S and S:Held()
+            sharing:SetText(h and string.format("Sharing on: passing on %s's scan from %s ago", h.by, AHF.Age(AHF.Now() - h.t))
+                or "Sharing on: nothing to pass on until you scan")
+        end
     end)
 end
 
@@ -94,6 +116,17 @@ local function BuildSettings(p)
         .. "Set a longer wait here if you want one.")
     AddRefresher(s.Refresh)
     AHF.ui.cooldown = s
+
+    local card3 = T.Card(p, "Price sharing", 0, -220, PAGE_W, 70)
+    local sw = T.LabeledSwitch(card3, "Share prices with other players who have AHF", 12, -32)
+    sw:SetScript("OnClick", function(self)
+        AHF.Share:SetOn(not self:IsOn())
+        AHF:RefreshWindow()
+    end)
+    T.Tooltip(sw, "Share prices", "Your full scans go to other AHF players on your realm and faction, and theirs come to you, "
+        .. "on a hidden channel. A price far from what you already have is left out.")
+    AddRefresher(function() sw:SetOn(AHF.db.share) end)
+    AHF.ui.share = sw
 end
 
 ---------------------------------------------------------------------------

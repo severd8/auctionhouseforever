@@ -494,6 +494,166 @@ AHF:Slash("")
 eq(w:IsShown(), false, "toggles closed")
 
 ---------------------------------------------------------------------------
+step("sharing: the data format")
+local S = ns.Share
+local k, mn, mk, q = S.DecodeItem(S.EncodeItem("15210:-19", 9000, 9500, 3))
+eq(k, "15210:-19", "suffixed key"); eq(mn, 9000); eq(mk, 9500); eq(q, 3)
+k, mn, mk, q = S.DecodeItem(S.EncodeItem("2589", 13, nil, 325))
+eq(k, "2589"); eq(mn, 13); eq(mk, nil, "no market"); eq(q, 325)
+eq(S.DecodeItem("zz:0::1"), nil, "zero price refused")
+eq(S.DecodeItem("garbage"), nil, "garbage refused")
+local many = {}
+for i = 1, 3000 do many[i] = { tostring(1000 + i), 123456 + i, 130000 + i, i % 200 } end
+local pieces = S.Pieces(many, 200)
+local back = 0
+for _, piece in ipairs(pieces) do
+    assert(#piece <= 200, "piece too long: " .. #piece)
+    back = back + #S.ReadPiece(piece)
+end
+eq(back, 3000, "every item comes back")
+assert(#pieces < 300, "pieces: " .. #pieces)
+
+step("sharing: joins a hidden channel a little after login")
+eq(PREFIXES[S.PREFIX], true, "prefix registered")
+eq(GetChannelName(S.CHANNEL), 0, "not straight away")
+Wait(S.JOIN_DELAY + 1)
+assert(GetChannelName(S.CHANNEL) > 0, "joined")
+assert(#REMOVED >= 2, "taken out of the chat windows")
+eq(REMOVED[1][2], S.CHANNEL)
+local filter = CHAT_FILTERS.CHAT_MSG_CHANNEL_NOTICE[1]
+eq(filter(nil, "CHAT_MSG_CHANNEL_NOTICE", "YOU_CHANGED", "", "", "5. AHFPrices"), true, "join notice hidden")
+eq(filter(nil, "CHAT_MSG_CHANNEL_NOTICE", "YOU_CHANGED", "", "", "1. General"), false, "others left alone")
+Wait(4)
+local function sentLike(pattern)
+    for _, m in ipairs(SENT) do if m.msg:find(pattern) then return m end end
+end
+local q1 = sentLike("^Q,H,")
+assert(q1, "asks who has newer prices")
+eq(q1.chatType, "CHANNEL"); eq(q1.target, GetChannelName(S.CHANNEL)); eq(q1.prefix, S.PREFIX)
+
+step("sharing: answers a player who's behind")
+local held = S:Held()
+assert(held and held.by == PLAYER and #held.pieces > 0, "our last scan is ready to share")
+SENT = {}
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "Q,H,0", "CHANNEL", "Bob-Mega Server")
+eq(#SENT, 0, "waits a moment first")
+Wait(5)
+local h1 = sentLike("^H,H,")
+assert(h1, "says what it has")
+eq(h1.msg, "H,H," .. P.ToBase36(held.t) .. "," .. PLAYER .. "," .. P.ToBase36(#held.pieces))
+SENT = {}
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "Q,H,0", "CHANNEL", "Bob-Mega Server")
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "H,H," .. P.ToBase36(held.t) .. ",Ann,3", "CHANNEL", "Ann-Mega Server")
+Wait(5)
+eq(sentLike("^H,"), nil, "someone else answered first with the same scan")
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "Q,A,0", "CHANNEL", "Zed-Mega Server")
+Wait(5)
+eq(sentLike("^H,"), nil, "the other faction is ignored")
+
+step("sharing: sends its scan when asked, paced")
+AHF:Realm().share = { t = held.t, by = PLAYER, pieces = S.Pieces(many, 200), items = #many }   -- a big scan
+held = S:Held()
+SENT = {}
+local ask = "R,H," .. P.ToBase36(held.t) .. "," .. PLAYER .. "," .. PLAYER
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, ask, "CHANNEL", "Bob-Mega Server")
+Wait(3, 0.05)
+assert(#SENT <= S.BURST + 4, "a few at once, then about one a second: " .. #SENT)
+SEND_RESULTS = { 3 }   -- the game says too many: that piece waits and goes again
+Wait(S.RETRY + 1)
+eq(#SEND_RESULTS, 0, "the game said too many")
+LOCKDOWN = true
+local before = #SENT
+Wait(10)
+eq(#SENT, before, "nothing during a lockdown")
+LOCKDOWN = false
+Wait(#held.pieces * S.GAP + 10)
+local d = 0
+for _, m in ipairs(SENT) do if m.msg:find("^D,") then d = d + 1 end end
+eq(d, #held.pieces, "every piece once, even after the game said too many")
+assert(sentLike("^E,H,"), "and an end")
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, ask, "CHANNEL", "Cy-Mega Server")
+Wait(1)
+eq(#S.queue, 0, "not sent twice")
+
+step("sharing: takes a newer scan from someone else")
+SERVER_TIME = SERVER_TIME + 3600
+local bt = SERVER_TIME - 60
+local ours = AHF:MarketPrice("3824")
+local theirs = {
+    { "3824", ours - 10, ours - 5, 30 },     -- close to ours: taken
+    { "3829", 1, 1, 5 },                     -- far below ours: left out
+    { "777", 500, 520, 4 },                  -- new to us: taken
+}
+local bp = S.Pieces(theirs, 12)
+eq(#bp, 3, "three pieces")
+SENT = {}
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "H,H," .. P.ToBase36(bt) .. ",Bob,3", "CHANNEL", "Bob-Mega Server")
+Wait(3)
+local r1 = sentLike("^R,H,")
+assert(r1, "asks for it")
+eq(r1.msg, "R,H," .. P.ToBase36(bt) .. ",Bob,Bob")
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "H,H," .. P.ToBase36(bt) .. ",Bob,3", "CHANNEL", "Ann-Mega Server")
+Wait(3)
+local rs = 0
+for _, m in ipairs(SENT) do if m.msg:find("^R,") then rs = rs + 1 end end
+eq(rs, 1, "asks only once")
+local function piece(i, n, p, from)
+    FireEvent("CHAT_MSG_ADDON", S.PREFIX, table.concat({ "D", "H", P.ToBase36(bt), "Bob", P.ToBase36(i), P.ToBase36(n), p }, ","),
+        "CHANNEL", from or "Bob-Mega Server")
+end
+local function scans3824()
+    local n = 0
+    for _, r in ipairs(AHF:Records("3824")) do n = n + r.n end
+    return n
+end
+local n3824 = scans3824()
+piece(1, 3, bp[1]); piece(1, 3, bp[1]); piece(2, 3, bp[2])
+eq(scans3824(), n3824 + 1, "counted once, even sent twice")
+eq(AHF:MarketPrice("3829") ~= 1, true, "far-off price left out")
+piece(3, 3, bp[3])
+eq(AHF:MarketPrice("777"), 520, "new item taken")
+has(lastChat(), "prices for 2 items from Bob's scan (1 min old), 1 far from yours left out")
+eq(S:Held().by, "Bob", "passes Bob's scan on now")
+eq(AHF:Realm().shared[1].items, 2)
+piece(1, 3, bp[1])
+S.incoming = {}   -- as after a while, or a relog
+piece(1, 3, bp[1])
+eq(scans3824(), n3824 + 1, "the same scan isn't taken again")
+AHF:Slash("")
+has(AHF.ui.sharedGot:GetText(), "2 items from Bob's scan")
+has(AHF.ui.sharing:GetText(), "passing on Bob's scan")
+AHF:Slash("")
+
+step("sharing: ignores old scans, our own messages and broken ones")
+SERVER_TIME = SERVER_TIME + 3600
+SENT = {}
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "H,H," .. P.ToBase36(SERVER_TIME - 3 * DAY) .. ",Old,3", "CHANNEL", "Old-Mega Server")
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "H,H," .. P.ToBase36(SERVER_TIME) .. "," .. PLAYER .. ",3", "CHANNEL", PLAYER .. "-Mega Server")
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "H,H,,,", "CHANNEL", "Bad-Mega Server")
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "D,H,zz", "CHANNEL", "Bad-Mega Server")
+FireEvent("CHAT_MSG_ADDON", "OTHER", "Q,H,0", "CHANNEL", "Bob-Mega Server")
+Wait(5)
+eq(#SENT, 0, "nothing to say")
+S:OwnScan(SERVER_TIME, { { "3824", 200, 210, 9 } })
+Wait(1)
+assert(sentLike("^H,H," .. P.ToBase36(SERVER_TIME) .. "," .. PLAYER .. ",1$"), "a new scan of ours is announced")
+
+step("sharing: can be turned off")
+AHF:Slash("")
+AHF.window:ShowTab("settings")
+eq(AHF.ui.share:IsOn(), true, "on to start with")
+Click(AHF.ui.share)
+eq(AHF.db.share, false, "off")
+eq(GetChannelName(S.CHANNEL), 0, "left the channel")
+SENT = {}
+FireEvent("CHAT_MSG_ADDON", S.PREFIX, "Q,H,0", "CHANNEL", "Bob-Mega Server")
+Wait(5)
+eq(#SENT, 0, "says nothing while off")
+Click(AHF.ui.share)
+assert(GetChannelName(S.CHANNEL) > 0, "joins again")
+AHF:Slash("")
+
+---------------------------------------------------------------------------
 step("saving and loading")
 local itemsBefore = AHF:Stats()
 FireEvent("PLAYER_LOGOUT")

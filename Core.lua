@@ -8,7 +8,8 @@ _G.AuctionHouseForever = AHF
 
 AHF.DEFAULTS = {
     tooltip = true,          -- show AHF prices in item tooltips
-    scanChat = true,         -- say in chat when a full scan finishes
+    scanChat = true,         -- say in chat when a full scan finishes (or prices arrive from another player)
+    share = true,            -- share full scans with other players who have the addon
     resaleMinProfit = 100,   -- Resale tab: copper
     resaleMinPct = 10,       -- percent
     resaleMinSeen = 3,       -- seen in at least this many scans ...
@@ -77,7 +78,8 @@ end
 --   AuctionHouseForeverData = { v = 1, realms = { ["Realm-Faction"] = {
 --       items = { [itemKey] = encoded string (or the decoded list while in use) },
 --       lastFull = time of the last full scan asked for, lastGood = time of the last one
---       the auction house sent, scans = { recent full scans } } } }
+--       the auction house sent, scans = { recent full scans }, share = { the newest scan
+--       to pass on: t, by, pieces }, shared = { scans got from others, newest first } } } }
 --   AuctionHouseForeverSettings = settings, shared by every character
 -- Item keys: "itemID", or "itemID:suffix" for items with a random suffix.
 ---------------------------------------------------------------------------
@@ -117,6 +119,8 @@ function AHF:Realm(key)
     r.scans = type(r.scans) == "table" and r.scans or {}
     r.lastFull = tonumber(r.lastFull) or 0
     r.lastGood = tonumber(r.lastGood) or 0
+    if type(r.share) ~= "table" then r.share = nil end
+    r.shared = type(r.shared) == "table" and r.shared or {}
     return r
 end
 
