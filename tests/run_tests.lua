@@ -142,7 +142,10 @@ local button = AHF.scanButton
 assert(button, "Full scan button made")
 eq(button.__parent, AuctionHouseFrame.SearchBar, "on the search bar")
 eq(button.__points[1][2], AuctionHouseFrame.SearchBar.FilterButton, "beside Filter and Search")
-eq(button:GetText(), "Full scan", "button ready")
+eq(button:GetText(), "Scan", "button ready")
+eq(button.__template, "UIPanelButtonTemplate", "the game's red button, like Search")
+eq(button.__w, 80, "small enough for the gap")
+eq(button.__points[1][4], -10, "same gap as Filter to Search")
 
 step("full scan: reads every listing over several frames")
 AH.replicate = {}
@@ -156,7 +159,7 @@ table.insert(AH.replicate, { 15210, 1, 9000, 1018 })
 table.insert(AH.replicate, { 15210, 1, 5000, 1019 })
 Click(button)
 eq(AH.replicateCalls, 1, "asked the game")
-eq(button:GetText(), "Waiting...", "waiting")
+eq(button:GetText(), "...", "waiting"); eq(button.__enabled, false, "greyed out while waiting")
 FireEvent("REPLICATE_ITEM_LIST_UPDATE")
 local frames = RunJobs()
 assert(frames > 3, "spread over frames (took " .. frames .. ")")
@@ -168,18 +171,22 @@ eq(AHF:Records("15210:1018")[1].m, 9000, "suffix kept apart")
 eq(AHF:Records("15210:1019")[1].m, 5000, "other suffix")
 
 step("full scan: no wait unless one is set")
-eq(button:GetText(), "Full scan", "ready straight away")
+eq(button:GetText(), "Scan", "ready straight away"); eq(button.__enabled, true, "clickable")
 AHF.db.cooldown = 15
 Tick(1)
-has(button:GetText(), "Scan in 15:00")
+eq(button:GetText(), "15:00", "counts down")
+eq(button.__enabled, false, "greyed out during the wait")
+local calls = AH.replicateCalls
+Click(button)
+eq(AH.replicateCalls, calls, "clicking it does nothing")
 eq(AHF:StartFullScan(), false, "too soon")
 has(lastChat(), "possible in 15:00")
 SERVER_TIME = SERVER_TIME + 14 * 60
 Tick(1)
-has(button:GetText(), "Scan in 1:00")
+eq(button:GetText(), "1:00")
 SERVER_TIME = SERVER_TIME + 60
 Tick(1)
-eq(button:GetText(), "Full scan", "ready again")
+eq(button:GetText(), "Scan", "ready again")
 AHF.db.cooldown = 0
 Tick(1)
 

@@ -6,6 +6,9 @@ local _, ns = ...
 local AHF = ns.AHF
 
 AHF.NEWS = {
+    { version = "2.0.1", date = "2026-10-17", items = {
+        "The full scan button is now a small red Scan button like Search, and no longer covers the search box.",
+    } },
     { version = "2.0.0", date = "2026-10-17", items = {
         "A brand new addon: AuctionHouse Forever now keeps a history of auction house prices.",
         "Full scan button beside Search: reads every listing and saves the prices.",

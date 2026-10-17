@@ -41,7 +41,7 @@ local function BuildPrices(p)
     counts:SetPoint("TOPLEFT", 12, -52)
     local nextScan = Text(scanCard, "", "GameFontNormal")
     nextScan:SetPoint("TOPLEFT", 12, -74)
-    T.Note(scanCard, "Start a full scan with the Full scan button under the auction house, or type /ahf scan there. "
+    T.Note(scanCard, "Start a full scan with the red Scan button beside Search in the auction house, or type /ahf scan there. "
         .. "Searches you make in the auction house are saved too.", 12, -100, PAGE_W - 24)
     AHF.ui.where, AHF.ui.stored, AHF.ui.lastScan, AHF.ui.scanCounts, AHF.ui.nextScan = where, stored, last, counts, nextScan
 

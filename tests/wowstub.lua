@@ -104,11 +104,19 @@ function Methods:ClearFocus()
 end
 function Methods:GetCenter() return 500, 400 end
 
-function CreateFrame(kind, name, parent) return newObj(kind, name, parent) end
+function CreateFrame(kind, name, parent, template)
+    local o = newObj(kind, name, parent)
+    o.__template = template
+    return o
+end
+function Methods:Enable() self.__enabled = true end
+function Methods:Disable() self.__enabled = false end
+function Methods:IsEnabled() return self.__enabled ~= false end
 
 -- Clicks a button the way the game does
 function Click(b, which)
     assert(b.__scripts.OnClick, "nothing to click")
+    if b.__enabled == false then return end   -- a disabled button ignores clicks
     b.__scripts.OnClick(b, which or "LeftButton")
 end
 

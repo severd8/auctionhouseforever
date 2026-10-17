@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1
+
+- **Scan button fixed.** The full scan button no longer covers the end of the search box. It's now a small red **Scan** button like the game's own Search button, in the gap before Filter. While it works it shows its progress (for example 45%).
+- Your first scan with 2.0.0 read 57,610 listings of 2,808 different items in about 8 seconds, so it really does read the whole auction house.
+
 ## 2.0.0
 
 A brand new addon under the same name. AuctionHouse Forever now keeps a history of auction house prices, so you know what things are really worth. (Versions 1.x were a window resizer; that addon is retired and its settings are not used.)

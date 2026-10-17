@@ -12,7 +12,7 @@ It works alongside Auctionator: a full scan started from Auctionator fills Aucti
 
 ## Features
 
-- **Full scan.** Click **Full scan** beside the auction house's Filter and Search buttons. It reads every listing in a few seconds and saves the prices. Chat tells you how many listings and different items it read.
+- **Full scan.** Click the red **Scan** button beside the auction house's Filter and Search buttons. It reads every listing in a few seconds and saves the prices. Chat tells you how many listings and different items it read.
 - **Your searches count too.** Every search you make saves the prices it shows, and so does a full scan started from Auctionator.
 - **Tooltips.** Items show **AHF Vendor** (what a vendor pays for one) and **AHF Market (seen N)**: the usual auction price for one, and how many were listed last time.
 - **A fair market price.** The middle price of the cheapest listings, ignoring silly prices at either end, so one listing at 1 copper or 999 gold can't drag it.
@@ -25,7 +25,7 @@ It works alongside Auctionator: a full scan started from Auctionator fills Aucti
 2. Unzip it into your WoW: Forever `Interface\AddOns` folder so you end up with an `AddOns\AuctionHouseForever\` folder.
 3. Restart the game, or type `/reload` if it's already running.
 
-Then visit an auctioneer and click **Full scan**.
+Then visit an auctioneer and click **Scan**.
 
 ## Slash commands
 

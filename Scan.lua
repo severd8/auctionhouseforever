@@ -180,45 +180,55 @@ AHF:On("COMMODITY_SEARCH_RESULTS_UPDATED", function(itemID) AHF:RecordCommodity(
 AHF:On("ITEM_SEARCH_RESULTS_UPDATED", function(itemKey) AHF:RecordItem(itemKey) end)
 
 ---------------------------------------------------------------------------
--- The Full scan button, beside the auction house's search
+-- The Scan button, beside the auction house's search
 ---------------------------------------------------------------------------
 function AHF:RefreshScanButton()
     local b = self.scanButton
     if not b then return end
     local text, off
     if scan.state == "waiting" then
-        text, off = "Waiting...", true
+        text, off = "...", true
     elseif scan.state == "reading" then
         local pct = scan.total and scan.total > 0 and math.floor((scan.done or 0) * 100 / scan.total) or 0
-        text, off = "Reading " .. pct .. "%", true
+        text, off = pct .. "%", true
     else
         local wait = self:ScanWait()
         if wait > 0 then
-            text, off = "Scan in " .. self.Clock(wait), true
+            text, off = self.Clock(wait), true
         else
-            text, off = "Full scan", false
+            text, off = "Scan", false
         end
     end
     b:SetText(text)
-    b:SetDisabled(off)
+    if off then b:Disable() else b:Enable() end
 end
 
--- Left of the Filter button on the Buy tab's search bar (it shows and hides with it)
+-- A small red button like the game's Search button, in the gap between the
+-- search box and Filter on the Buy tab's search bar (it shows and hides with it).
+-- Its text: Scan, ... (waiting), 45% (reading), or the time left to wait.
+AHF.SCAN_BUTTON_W = 80
+
 function AHF:MakeScanButton()
     if self.scanButton or not AuctionHouseFrame then return end
     local bar = AuctionHouseFrame.SearchBar
     local filter = bar and (bar.FilterButton or bar.SearchButton)
-    local b = T.FlatButton(bar or AuctionHouseFrame, "Full scan", 110, 22)
+    local b = CreateFrame("Button", nil, bar or AuctionHouseFrame, "UIPanelButtonTemplate")
+    b:SetSize(self.SCAN_BUTTON_W, 22)
     if filter then
-        b:SetPoint("RIGHT", filter, "LEFT", -8, 0)
+        b:SetPoint("RIGHT", filter, "LEFT", -10, 0)
     else
         b:SetPoint("TOPRIGHT", AuctionHouseFrame, "BOTTOMRIGHT", -4, -2)
     end
-    T.Disabler(b, { b })
-    b:SetScript("OnClick", function(self)
-        if not self.disabled then AHF:StartFullScan() end
+    b:SetText("Scan")
+    b:SetMotionScriptsWhileDisabled(true)
+    b:SetScript("OnClick", function() AHF:StartFullScan() end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Full scan")
+        GameTooltip:AddLine("Reads every listing in the auction house and saves the prices for AHF Market. Takes a few seconds.", 1, 1, 1, true)
+        GameTooltip:Show()
     end)
-    T.Tooltip(b, "Full scan", "Reads every listing in the auction house and saves the prices for AHF Market. Takes a few seconds.")
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     local elapsed = 0
     b:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + (dt or 0)
