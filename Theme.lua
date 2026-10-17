@@ -1,8 +1,8 @@
 -- The shared look of severd8's WoW: Forever addons: flat dark panels, gold text,
 -- red accents, the logo header bar, and the settings window with tabs down the
 -- left. This same file ships in TauntMaster Forever, ToppedOff Forever,
--- Outfitter Forever, BattleText Forever and AuctionHouse Forever. Change it in
--- one, then copy it to the others.
+-- Outfitter Forever, BattleText Forever, GatherPath Forever and AuctionHouse
+-- Forever. Change it in one, then copy it to the others.
 
 local ADDON, ns = ...
 local T = {}
@@ -14,6 +14,7 @@ local BRANDS = {
     ToppedOffForever   = { name = "ToppedOff Forever",   short = "ToppedOff",   logo = "Media\\Icon" },
     OutfitterForever   = { name = "Outfitter Forever",   short = "Outfitter",   logo = "Textures\\Logo" },
     BattleTextForever  = { name = "BattleText Forever",  short = "BattleText",  logo = "Media\\Icon" },
+    GatherPathForever  = { name = "GatherPath Forever",  short = "GatherPath",  logo = "Media\\Icon" },
     AuctionHouseForever = { name = "AuctionHouse Forever", short = "AuctionHouse", logo = "Media\\logo" },
 }
 local brand = BRANDS[ADDON] or { name = tostring(ADDON), short = tostring(ADDON), logo = "" }
@@ -428,13 +429,16 @@ end
 --   opts.hint     footer text
 --   opts.version  function returning the version shown beside the name
 --   opts.onShow / onHide / onTab(key)   optional
+--   opts.height   optional: taller (or shorter) than T.WINDOW.H; T.BodyHeight(h) is what a page then gets
 -- Returns the window, with .pages[key], .tabButtons[key], :ShowTab(key) and .currentTab
 ---------------------------------------------------------------------------
-T.WINDOW = { W = 740, H = 540, HEADER = 52, FOOTER = 40, SIDE = 170, PAGE_W = 540 }
-T.WINDOW.BODY_H = T.WINDOW.H - T.WINDOW.HEADER - T.WINDOW.FOOTER - 54   -- what's left for a page's content
+T.WINDOW = { W = 740, H = 556, HEADER = 52, FOOTER = 40, SIDE = 170, PAGE_W = 540 }
+-- what's left for a page's content in a window this tall
+function T.BodyHeight(h) return (h or T.WINDOW.H) - T.WINDOW.HEADER - T.WINDOW.FOOTER - 54 end
+T.WINDOW.BODY_H = T.BodyHeight()
 
 function T.Window(opts)
-    local W, H, HEADER, FOOTER, SIDE = T.WINDOW.W, T.WINDOW.H, T.WINDOW.HEADER, T.WINDOW.FOOTER, T.WINDOW.SIDE
+    local W, H, HEADER, FOOTER, SIDE = T.WINDOW.W, opts.height or T.WINDOW.H, T.WINDOW.HEADER, T.WINDOW.FOOTER, T.WINDOW.SIDE
     local win = CreateFrame("Frame", opts.name, UIParent)
     win:SetSize(W, H)
     win:SetPoint("CENTER")

@@ -1,25 +1,17 @@
 ## Interface: 16001
 ## Title: AuctionHouse Forever
-## Notes: Resize, move and scale the Auction House, and drag its columns and category list wider.
+## Notes: Keeps a history of auction house prices from your scans and searches, and shows them in item tooltips.
 ## Author: severd8
 ## Version: @project-version@
 ## IconTexture: Interface\AddOns\AuctionHouseForever\Media\logo
-## SavedVariables: AuctionHouseForeverDB
-## SavedVariablesPerCharacter: AuctionHouseForeverCharDB
+## SavedVariables: AuctionHouseForeverData, AuctionHouseForeverSettings
 ## X-License: MIT
 ## X-Curse-Project-ID: 1742416
 ## X-Category: Auction & Economy
 
-Libs/LibStub/LibStub.lua
-Libs/LibAHTab/LibAHTab.lua
 Theme.lua
+Prices.lua
 Core.lua
-Layout.lua
-Columns.lua
-Extra.lua
-Cells.xml
+Scan.lua
 News.lua
 Options.lua
-Tab.lua
-Splash.lua
-Report.lua

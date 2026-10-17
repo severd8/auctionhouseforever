@@ -20,15 +20,14 @@ body:
       label: How can it be reproduced?
       description: The steps that lead to the problem.
       placeholder: |
-        1. Opened the Auction House
-        2. Dragged the corner grip to make it bigger
-        3. Switched to the Sell tab
-        4. ...
+        1. Opened the auction house
+        2. Clicked Full scan
+        3. ...
   - type: dropdown
     id: tab
     attributes:
-      label: Which Auction House tab were you on?
-      options: [Buy (browse), Buying an item, Sell, Auctions, An Auctionator tab, Other / not sure]
+      label: Where does it go wrong?
+      options: [Full scan, Searching, Tooltip prices, The AuctionHouse Forever window, Somewhere else]
     validations:
       required: true
   - type: dropdown

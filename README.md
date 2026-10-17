@@ -2,27 +2,22 @@
 
 # AuctionHouse Forever
 
-**A bigger, roomier Auction House: resize it, move it, scale it, and set up its columns your way.**
+**Know what things are really worth: a history of auction house prices for World of Warcraft: Forever.**
 
-AuctionHouse Forever is an addon for **World of Warcraft: Forever**. It changes only the size and layout of the Auction House window (the category list on the left, the results on the right, the tabs at the bottom), so long item names stop getting cut off and you can see more results at once.
+AuctionHouse Forever saves the prices you see at the auction house, from full scans and from your normal searches, and shows them in item tooltips. It keeps a day-by-day history per realm and faction, so later versions can show trends, a price graph, deals and posting prices.
 
-It works alongside Auctionator and other Auction House addons: their tabs, columns and buttons stay where they are.
+It works alongside Auctionator: a full scan started from Auctionator fills AuctionHouse Forever's prices too. It never buys, bids or posts anything for you.
 
 ---
 
 ## Features
 
-- **Resizable.** Drag the grip in the bottom right corner (double-click it for the default size), or pick a quick size: Compact, Wide or Tall. The category list, the results and the tabs stretch with the window, and a taller window shows more rows.
-- **Wider by default.** The window opens 200 pixels wider than Blizzard's, and all of the extra room goes to the Name column.
-- **Movable.** Drag the title bar to put the window anywhere. Lock it in place when you're happy with it.
-- **Scale** the whole window from 60% to 200%.
-- **Column widths.** Drag the line between two column headers to resize a column. Double-click the line for the column's default width. Works on every list (Buy, Sell, Auctions) and on columns added by other addons, like a Median price column. Saved for each character.
-- **Hide, show and reorder columns** with the **Columns** button beside the search box (or the Show & Order tab). Columns from other addons too. **Copy** one character's columns to another in one click.
-- **Extra columns**: **iLvl**, **Req Lvl**, **Type** and **Vendor** (green when you could sell it to a vendor for more than the lowest buyout) on the search results; **Per unit** and **Seller** on an item's auctions. Click their headers to sort: the sort stays for every search until you click one of the game's headers.
-- **Red for items you can't use.** Req Lvl turns red when it's above your level; iLvl and Type turn red when you can't use the item (armour or weapon skill, class, profession). Can be turned off.
-- **Row text size** for every list; rows grow with bigger text.
-- **Category list width and text size.** Make the list of categories on the left wider, and its text bigger.
-- **Settings in their own tab** (**AH Forever**) at the bottom of the Auction House, with hover help on every option and a Reset to default button.
+- **Full scan.** Click **Full scan** beside the auction house's Filter and Search buttons. It reads every listing in a few seconds and saves the prices. Chat tells you how many listings and different items it read.
+- **Your searches count too.** Every search you make saves the prices it shows, and so does a full scan started from Auctionator.
+- **Tooltips.** Items show **AHF Vendor** (what a vendor pays for one) and **AHF Market (seen N)**: the usual auction price for one, and how many were listed last time.
+- **A fair market price.** The middle price of the cheapest listings, ignoring silly prices at either end, so one listing at 1 copper or 999 gold can't drag it.
+- **Per realm and faction.** Alliance and Horde keep separate prices, since their auction houses are separate.
+- **Small saved file.** Each day is kept for two weeks, then joined into weeks; anything older than a year is dropped. Big jobs are spread out so the game never freezes.
 
 ## Installation
 
@@ -30,70 +25,41 @@ It works alongside Auctionator and other Auction House addons: their tabs, colum
 2. Unzip it into your WoW: Forever `Interface\AddOns` folder so you end up with an `AddOns\AuctionHouseForever\` folder.
 3. Restart the game, or type `/reload` if it's already running.
 
-Then visit an auctioneer. The Auction House opens at its new size straight away.
+Then visit an auctioneer and click **Full scan**.
 
-## Using it
-
-- **Resize** — drag the grip in the bottom right corner of the Auction House.
-- **Move** — drag the title bar at the top. Lock it with `/ahf lock` or in the settings.
-- **Resize a column** — point at the line between two column headers (it turns gold) and drag. Double-click the line to put that column back to its default width.
-- **Hide, show or reorder columns** — click **Columns** beside the search box: tick a column on or off, or hover it for Move left / Move right. Or use the settings → **Show & Order** tab. The Name column always shows.
-- **Open the settings** — click the **AH Forever** tab at the bottom of the Auction House, type `/ahf`, or go to **Options → AddOns → AuctionHouse Forever**.
-
-### Settings (AH Forever tab)
-
-| Tab | What's there |
-|---|---|
-| **Window** | Width, height and scale, quick sizes (Compact, Wide, Tall), keep the window in place, reset position |
-| **Columns** | Category list width and text size, row text size, how many columns have their own width, reset all columns, red text for items you can't use |
-| **Show & Order** | For each list: show or hide each column, move it left or right, show all in the default order; copy all of another character's columns |
-| **General** | Welcome screen, Reset to default, command list |
-
-### Slash commands
+## Slash commands
 
 | Command | Does |
 |---|---|
-| `/ahf` | Open or close the settings |
-| `/ahf lock` · `/ahf unlock` | Lock or unlock the window's position |
-| `/ahf reset` | Size, position and scale back to the defaults |
-| `/ahf columns` | Every column shown, in the default order and width |
-| `/ahf news` | Show the welcome / what's new window |
-| `/ahf debug` | Details to copy into a bug report |
+| `/ahf` | Open or close the window (prices saved, last scan, settings, what's new) |
+| `/ahf scan` | Start a full scan (at the auction house) |
+| `/ahf tooltip` | Turn the tooltip prices on or off |
 
-`/auctionhouseforever` works too.
+## Settings
 
-## Good to know
-
-- **It never buys, bids or posts anything.** Every purchase is still your own click on Blizzard's (or Auctionator's) buttons.
-- **Size, position, scale and row text size** are shared by all your characters. **Columns** (widths, hidden, order) are saved for each character; **Copy from…** on the Show & Order tab copies them from a character that has logged out (or used `/reload`) since 1.4.0.
-- Hiding a column only takes it off the screen: nothing is deleted, and other addons' columns come back when you show them again.
-- Until you drag the window, it opens where Blizzard puts it.
-- The window is never bigger than your screen, and the Name column never gets narrower than 150 pixels: if the window is too narrow, widened columns give the room back first.
-
-## Troubleshooting
-
-- **The window is off-screen or too big** — type `/ahf reset`.
-- **Columns look wrong** — type `/ahf columns`.
-- **Everything looks wrong** — **General** tab → **Reset to default** (click twice).
+| Tab | What's there |
+|---|---|
+| **Prices** | Your realm and faction, how many items have prices, the saved file's size, the last full scan |
+| **Settings** | Tooltip prices on or off, the chat line after a scan, a wait between full scans (none to start with) |
+| **What's new** | The changes in each version |
 
 ## Feedback and bug reports
 
-Found a bug or have an idea? Please [submit it on GitHub](https://github.com/severd8/auctionhouseforever/issues/new/choose). A short form asks which tab you were on and for any error message, so issues can be fixed quickly. Type `/ahf debug` in game and paste its details in too. You'll need a free GitHub account. Otherwise, feel free to leave a comment on the CurseForge page.
+Found a bug or have an idea? Please [submit it on GitHub](https://github.com/severd8/auctionhouseforever/issues/new/choose). You'll need a free GitHub account. Otherwise, feel free to leave a comment on the CurseForge page.
 
 ## Support the addon
 
-AuctionHouse Forever is free. If it saves you some squinting at the Auction House, you can [leave a small tip on Ko-fi](https://ko-fi.com/tauntmasterforever). Thank you!
+AuctionHouse Forever is free. If it helps you sell smarter, you can [leave a small tip on Ko-fi](https://ko-fi.com/tauntmasterforever). Thank you!
 
 ## Also by me
 
-- **TauntMaster Forever**: click a party member's bar to taunt their target off them. Free on CurseForge.
-- **ToppedOff Forever**: reminds you when buffs, food, reagents, ammo or gear need topping off. Free on CurseForge.
-- **Outfitter Forever**: the classic Outfitter gear manager, ported to WoW Forever. Free on CurseForge.
-- **BattleText Forever**: scrolling combat text for your hits, heals and the damage you take. Free on CurseForge.
+- **TauntMaster Forever**: click a party member's bar to taunt their target off them.
+- **ToppedOff Forever**: reminds you when buffs, food, reagents, ammo or gear need topping off.
+- **Outfitter Forever**: the classic Outfitter gear manager, ported to WoW Forever.
+- **BattleText Forever**: scrolling combat text for your hits, heals and the damage you take.
+- **GatherPath Forever**: the shortest gathering route through your herb and ore nodes.
 
-## Credits
-
-The Auction House tab uses **LibAHTab** by plusmouse (MIT licence, included in `Libs/LibAHTab`) and **LibStub** (public domain).
+All free on CurseForge.
 
 ## License
 

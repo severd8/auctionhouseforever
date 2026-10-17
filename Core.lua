@@ -1,346 +1,349 @@
--- AuctionHouse Forever
--- Makes the Auction House (Blizzard_AuctionHouseUI) resizable, movable and
--- scalable, with draggable column widths and a wider category list, for
--- World of Warcraft: Forever (interface 16001).
--- Only layout, size and styling: tabs, columns and buttons from Blizzard or other
--- addons (Auctionator, price columns) are left in place, and nothing is ever
--- bought, bid on or posted for you.
+-- AuctionHouse Forever: start-up, saved data, background jobs, tooltips and /ahf.
 
 local ADDON, ns = ...
+local T, P = ns.Theme, ns.Prices
 local AHF = {}
 ns.AHF = AHF
+_G.AuctionHouseForever = AHF
 
-local function Print(msg) print(ns.Theme.CHAT_PREFIX .. ": " .. msg) end
-AHF.Print = Print
-
-AHF.AH_ADDON = "Blizzard_AuctionHouseUI"
-
----------------------------------------------------------------------------
--- Settings
----------------------------------------------------------------------------
--- Blizzard's own size of the Auction House (Blizzard_AuctionHouseFrame.xml)
-AHF.BLIZZARD_WIDTH, AHF.BLIZZARD_HEIGHT = 800, 538
--- Blizzard's own width of the category list (AuctionHouseCategoriesListTemplate)
-AHF.BLIZZARD_SIDEBAR = 168
-
-AHF.SCHEMA = 1
-
--- Account-wide settings. point: nil = where Blizzard puts the window, or
--- { point, relativePoint, x, y } on UIParent once it has been dragged.
 AHF.DEFAULTS = {
-    width = 1000,          -- 200 more than Blizzard's, all of it for the Name column
-    height = 620,
-    scale = 1,
-    locked = false,
-    sidebarWidth = AHF.BLIZZARD_SIDEBAR,
-    rowTextScale = 100,       -- text size in the lists' rows, % of the game's own
-    categoryTextScale = 100,  -- text size in the category list, % of the game's own
-    showSplash = true,
-    lastSeenVersion = "",
-    markUnusable = true,      -- red iLvl, Req Lvl and Type for items you can't use
+    tooltip = true,          -- show AHF prices in item tooltips
+    scanChat = true,         -- say in chat when a full scan finishes
+    cooldown = 0,            -- minutes to wait between full scans (0: none; Forever allowed one straight after another in testing)
 }
 
--- Allowed range of every number setting
-AHF.LIMITS = {
-    width = { AHF.BLIZZARD_WIDTH, 1600 },
-    height = { AHF.BLIZZARD_HEIGHT, 1100 },
-    scale = { 0.6, 2 },
-    sidebarWidth = { AHF.BLIZZARD_SIDEBAR, 320 },
-    rowTextScale = { 100, 200 },
-    column = { 30, 400 },   -- a column dragged by its divider
-}
-AHF.NAME_MIN = 150          -- the Name column never gets narrower than this
-AHF.TEXT_SCALES = { 100, 110, 125, 150, 175, 200 }   -- the row text size choices, % of the game's own
-AHF.CATEGORY_TEXT_SCALES = { 100, 110, 125, 150 }   -- the category list is narrow: smaller choices
-AHF.CATEGORY_HEIGHT = 21   -- Blizzard's category button height
-AHF.ROW_HEIGHT = 20   -- Blizzard's row height; rows grow with bigger text (RowHeight)
-AHF.SORT_KINDS = { ilvl = true, req = true, vendor = true, type = true }   -- our sortable columns
--- One-click sizes on the Window tab (never bigger than the screen)
-AHF.SIZE_PRESETS = {
-    { label = "Compact", width = AHF.BLIZZARD_WIDTH, height = AHF.BLIZZARD_HEIGHT, tip = "Blizzard's own size." },
-    { label = "Wide",    width = 1300, height = 620, tip = "Room for long names and extra columns." },
-    { label = "Tall",    width = 1000, height = 880, tip = "More rows in every list." },
-}
+AHF.BUDGET = 8               -- milliseconds of work per frame for background jobs
 
--- Is v one of the text size choices?
-function AHF.ValidTextScale(v)
-    for _, s in ipairs(AHF.TEXT_SCALES) do if s == v then return true end end
-    return false
+---------------------------------------------------------------------------
+-- Chat and money
+---------------------------------------------------------------------------
+function AHF:Print(msg) print(T.CHAT_PREFIX .. ": " .. msg) end
+
+local GOLD_ICON = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:2:0|t"
+local SILVER_ICON = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:2:0|t"
+local COPPER_ICON = "|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:2:0|t"
+
+-- 26061 -> "2g 60s 61c" with the coin icons (plain letters with plain = true)
+function AHF.Money(copper, plain)
+    copper = math.floor((copper or 0) + 0.5)
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local gi, si, ci = GOLD_ICON, SILVER_ICON, COPPER_ICON
+    if plain then gi, si, ci = "g", "s", "c" end
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = g .. gi end
+    if s > 0 then parts[#parts + 1] = s .. si end
+    if c > 0 or #parts == 0 then parts[#parts + 1] = c .. ci end
+    return table.concat(parts, " ")
 end
 
-local function Clamp(v, range)
-    if v < range[1] then return range[1] end
-    if v > range[2] then return range[2] end
-    return v
-end
-AHF.Clamp = Clamp
-
--- A ScrollBox's rows can only be walked once Blizzard has given it a view
--- (a list that has never been shown has none, and ForEachFrame errors)
-function AHF.HasRows(box)
-    return type(box) == "table" and box.ForEachFrame ~= nil
-        and (box.GetView == nil or box:GetView() ~= nil)
+-- 90 -> "1 min", 7200 -> "2 h", 200000 -> "2 days"
+function AHF.Age(seconds)
+    seconds = math.max(0, seconds or 0)
+    if seconds < 60 then return "just now" end
+    if seconds < 3600 then return math.floor(seconds / 60) .. " min" end
+    if seconds < 86400 then return math.floor(seconds / 3600) .. " h" end
+    local d = math.floor(seconds / 86400)
+    return d .. (d == 1 and " day" or " days")
 end
 
--- Sets the height of a ScrollBox list's rows: the view's row extent (the
--- scroll range) and the rows already shown. view.elementExtent is nil until the
--- list's first rows (GetElementExtent errors then without a row index), so the
--- field is read directly.
-function AHF.SetBoxRowHeight(box, h, default)
-    if not AHF.HasRows(box) or not box.GetView then return end
-    local view = box:GetView()
-    if type(view) ~= "table" or not view.SetElementExtent then return end
-    if (view.elementExtent or default) == h then return end
-    view:SetElementExtent(h)
-    box:ForEachFrame(function(row) row:SetHeight(h) end)
-    if box.FullUpdate then box:FullUpdate(true) elseif box.Update then box:Update() end
+-- 754 -> "12:34"
+function AHF.Clock(seconds)
+    seconds = math.max(0, math.ceil(seconds or 0))
+    return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
-local function ValidPoint(p)
-    return type(p) == "table" and type(p[1]) == "string" and type(p[2]) == "string"
-        and type(p[3]) == "number" and type(p[4]) == "number"
-end
-
--- Fills in missing or damaged settings and brings numbers inside their limits
-local function PrepareSettings(db)
-    for k, v in pairs(AHF.DEFAULTS) do
-        if type(db[k]) ~= type(v) then db[k] = v end
-    end
-    for k, range in pairs(AHF.LIMITS) do
-        if type(db[k]) == "number" then db[k] = Clamp(db[k], range) end
-    end
-    if db.point ~= nil and not ValidPoint(db.point) then db.point = nil end
-    for key, list in pairs({ rowTextScale = AHF.TEXT_SCALES, categoryTextScale = AHF.CATEGORY_TEXT_SCALES }) do
-        local ok = false
-        for _, v in ipairs(list) do if v == db[key] then ok = true end end
-        if not ok then db[key] = 100 end
-    end
-    db.rowFontSize, db.categoryFontSize = nil, nil   -- 1.2.x point sizes, replaced by percentages
-    -- The sort on our columns: { kind =, reverse = } or nil (the game's sort)
-    local sort = db.browseSort
-    if sort ~= nil and not (type(sort) == "table" and AHF.SORT_KINDS[sort.kind]) then db.browseSort = nil end
-    if db.browseSort then db.browseSort.reverse = db.browseSort.reverse == true end
-    -- Each character's columns, to copy to another: { ["Name - Realm"] = { columns = { ... } } }
-    if type(db.characters) ~= "table" then db.characters = {} end
-    for who, c in pairs(db.characters) do
-        if type(who) ~= "string" or type(c) ~= "table" or type(c.columns) ~= "table" then db.characters[who] = nil end
-    end
-    db.schema = AHF.SCHEMA
-    return db
-end
-AHF.PrepareSettings = PrepareSettings
-
--- Per character: columns, per list. Each list keeps
---   widths = { [column name] = width }
---   hidden = { [column name] = true / false }   (nil: the column's default)
---   order  = { column name, ... }   (the named columns, left to right)
-local function PrepareCharSettings(db)
-    if type(db.columns) ~= "table" then db.columns = {} end
-    for key, state in pairs(db.columns) do
-        if type(state) ~= "table" then
-            db.columns[key] = nil
-        else
-            if type(state.widths) ~= "table" then state.widths = {} end
-            if type(state.hidden) ~= "table" then state.hidden = {} end
-            if type(state.order) ~= "table" then state.order = {} end
-            for name, w in pairs(state.widths) do
-                if type(w) ~= "number" then state.widths[name] = nil
-                else state.widths[name] = Clamp(w, AHF.LIMITS.column) end
-            end
-            for name, v in pairs(state.hidden) do
-                if type(v) ~= "boolean" or type(name) ~= "string" then state.hidden[name] = nil end
-            end
-            local order = {}
-            for _, name in ipairs(state.order) do
-                if type(name) == "string" then order[#order + 1] = name end
-            end
-            state.order = order
-        end
-    end
-    db.schema = AHF.SCHEMA
-    return db
-end
-AHF.PrepareCharSettings = PrepareCharSettings
-
--- The saved state of one list's columns (made on first use)
-function AHF:ColumnState(listKey)
-    local all = self.charDB.columns
-    local state = all[listKey]
-    if not state then
-        state = { widths = {}, hidden = {}, order = {} }
-        all[listKey] = state
-    end
-    return state
-end
-
-local function DeepCopy(t)
-    if type(t) ~= "table" then return t end
-    local c = {}
-    for k, v in pairs(t) do c[k] = DeepCopy(v) end
-    return c
-end
-AHF.DeepCopy = DeepCopy
-
--- "Name - Realm" of the character playing, or nil before it's known
-function AHF:CharacterKey()
-    local name = UnitName and UnitName("player")
-    local realm = GetRealmName and GetRealmName()
-    if type(name) ~= "string" or name == "" or name == UNKNOWNOBJECT then return nil end
-    return name .. ((type(realm) == "string" and realm ~= "") and (" - " .. realm) or "")
-end
-
--- Keeps a copy of this character's columns in the account settings, so other
--- characters can copy them (per-character settings can't be read from another)
-function AHF:RememberCharacter()
-    local key = self.db and self.charDB and self:CharacterKey()
-    if key then self.db.characters[key] = { columns = DeepCopy(self.charDB.columns) } end
-end
-
-local function HasColumnSettings(columns)
-    for _, state in pairs(columns) do
-        if type(state) == "table" then
-            for _, part in ipairs({ "widths", "hidden", "order" }) do
-                if type(state[part]) == "table" and next(state[part]) ~= nil then return true end
-            end
-        end
-    end
-    return false
-end
-
--- Other characters whose columns can be copied, sorted by name
-function AHF:OtherCharacters()
-    local me, list = self:CharacterKey(), {}
-    for who, c in pairs(self.db.characters) do
-        if who ~= me and HasColumnSettings(c.columns) then list[#list + 1] = who end
-    end
-    table.sort(list)
-    return list
-end
+function AHF.Now() return GetServerTime and GetServerTime() or time() end
 
 function AHF:Version()
-    local v = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version")
-    if type(v) ~= "string" or v:find("@") then return nil end
+    local get = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+    local v = get and get(ADDON, "Version")
+    if not v or v:find("@") then return nil end
     return (v:gsub("^v", ""))
 end
 
--- Repaints the open settings window when something changes elsewhere
-function AHF:RefreshOptions()
-    if self.optionsRefresh then self.optionsRefresh() end
-end
+---------------------------------------------------------------------------
+-- Saved data
+--   AuctionHouseForeverData = { v = 1, realms = { ["Realm-Faction"] = {
+--       items = { [itemKey] = encoded string (or the decoded list while in use) },
+--       lastFull = time of the last full scan, scans = { recent full scans } } } }
+--   AuctionHouseForeverSettings = settings, shared by every character
+-- Item keys: "itemID", or "itemID:suffix" for items with a random suffix.
+---------------------------------------------------------------------------
+function AHF:LoadSaved()
+    local data = AuctionHouseForeverData
+    if type(data) ~= "table" or data.v ~= 1 then data = { v = 1, realms = {} } end
+    if type(data.realms) ~= "table" then data.realms = {} end
+    AuctionHouseForeverData = data
+    self.data = data
 
--- Size, position and scale back to the defaults (the window goes back to
--- where Blizzard puts it)
-function AHF:ResetWindow()
-    local db = self.db
-    db.width, db.height, db.scale = self.DEFAULTS.width, self.DEFAULTS.height, self.DEFAULTS.scale
-    self:ResetPosition()
-end
-
--- Every setting back to its default, columns included
-function AHF:ResetAll()
-    local db = self.db
+    local s = AuctionHouseForeverSettings
+    if type(s) ~= "table" then s = {} end
     for k, v in pairs(self.DEFAULTS) do
-        if k ~= "showSplash" and k ~= "lastSeenVersion" then db[k] = v end
+        if type(s[k]) ~= type(v) then s[k] = v end
     end
-    db.browseSort = nil
-    self:ResetPosition()
-    self:ResetColumns()
-    self:ApplyRowFonts()
-    self:ApplyLayout()
+    s.cooldown = math.max(0, math.min(60, s.cooldown))
+    AuctionHouseForeverSettings = s
+    self.db = s
+end
+
+-- The auction house you use: realm and faction, since Forever's aren't shared
+function AHF:RealmKey()
+    local realm = GetRealmName and GetRealmName() or "?"
+    local faction = UnitFactionGroup and UnitFactionGroup("player") or "?"
+    return realm .. "-" .. (faction or "?")
+end
+
+function AHF:Realm(key)
+    key = key or self:RealmKey()
+    local r = self.data.realms[key]
+    if type(r) ~= "table" then
+        r = { items = {}, scans = {}, lastFull = 0 }
+        self.data.realms[key] = r
+    end
+    r.items = type(r.items) == "table" and r.items or {}
+    r.scans = type(r.scans) == "table" and r.scans or {}
+    r.lastFull = tonumber(r.lastFull) or 0
+    return r
+end
+
+-- An item's records, decoded on first use; nil when there are none (unless create)
+function AHF:Records(itemKey, create, realm)
+    realm = realm or self:Realm()
+    local v = realm.items[itemKey]
+    if type(v) == "string" then
+        v = P.Decode(v)
+        realm.items[itemKey] = v
+    elseif type(v) ~= "table" then
+        if not create then return nil end
+        v = {}
+        realm.items[itemKey] = v
+    end
+    return v
+end
+
+function AHF:Observe(itemKey, obs, realm)
+    local recs = self:Records(itemKey, true, realm)
+    return P.Add(recs, obs)
+end
+
+-- Turns the decoded lists back into strings (at logout, before the game saves)
+function AHF:Pack()
+    for _, realm in pairs(self.data.realms) do
+        for key, v in pairs(realm.items) do
+            if type(v) == "table" then
+                realm.items[key] = #v > 0 and P.Encode(v) or nil
+            end
+        end
+    end
+end
+
+-- How much is stored: items, records and roughly how many bytes
+function AHF:Stats(realm)
+    realm = realm or self:Realm()
+    local items, recs, bytes = 0, 0, 0
+    for key, v in pairs(realm.items) do
+        local str = type(v) == "table" and P.Encode(v) or v
+        if type(str) == "string" and #str > 0 then
+            items = items + 1
+            bytes = bytes + #str + #key + 8
+            local _, semis = str:gsub(";", "")
+            recs = recs + semis + 1
+        end
+    end
+    return items, recs, bytes
 end
 
 ---------------------------------------------------------------------------
--- The Auction House is load-on-demand: set it up when it loads
+-- Item keys
 ---------------------------------------------------------------------------
-local function AuctionHouseLoaded()
-    if C_AddOns and C_AddOns.IsAddOnLoaded then return C_AddOns.IsAddOnLoaded(AHF.AH_ADDON) end
-    return IsAddOnLoaded and IsAddOnLoaded(AHF.AH_ADDON)
+function AHF.KeyFor(itemID, suffix)
+    if not itemID then return nil end
+    suffix = tonumber(suffix) or 0
+    if suffix ~= 0 then return itemID .. ":" .. suffix end
+    return tostring(itemID)
 end
 
-function AHF:OnAuctionHouseLoaded()
-    if self.frame or not self.db then return end
-    local f = _G.AuctionHouseFrame
-    if not f then return end
-    self.frame = f
-    self:SetupLayout(f)
-    self:SetupColumns(f)
-    self:SetupColumnsButton(f)
-    self:SetupSorting(f)
-    -- The tab is extra: if it fails, everything else still works (/ahf debug says why)
-    local ok, err = pcall(self.SetupTab, self, f)
-    if not ok then self.tabError = err end
-    self:StretchBackgrounds()
-    self:ApplyLayout()
+-- From an item link: the item's ID and its random suffix (the 8th field of item:...)
+function AHF.KeyFromLink(link)
+    if type(link) ~= "string" then return nil end
+    local str = link:match("item:([%-%d:]+)")
+    if not str then return nil end
+    local f, i = {}, 0
+    for part in (str .. ":"):gmatch("([^:]*):") do
+        i = i + 1
+        f[i] = part
+    end
+    local id = tonumber(f[1])
+    if not id then return nil end
+    return AHF.KeyFor(id, f[7]), id
 end
 
 ---------------------------------------------------------------------------
--- Slash commands
+-- Background jobs: big work runs a slice each frame so the game never stalls
 ---------------------------------------------------------------------------
-AHF.COMMANDS = {
-    { "/ahf", "open or close the settings" },
-    { "/ahf lock · /ahf unlock", "lock or unlock the window's position" },
-    { "/ahf reset", "size, position and scale back to the defaults" },
-    { "/ahf columns", "every column shown, default order and widths" },
-    { "/ahf news", "show the welcome / what's new window" },
-    { "/ahf debug", "details to copy into a bug report" },
-}
+local jobs = {}
+local jobFrame = CreateFrame("Frame")
+jobFrame:Hide()
+local sliceStart
 
-local function Help()
-    Print("commands:")
-    for _, c in ipairs(AHF.COMMANDS) do Print(c[1] .. " — " .. c[2]) end
+-- Call inside a job now and then: hands back to the game when the frame's time is used
+function AHF:Pause()
+    if sliceStart and debugprofilestop() - sliceStart > self.BUDGET then
+        coroutine.yield()
+    end
+end
+
+function AHF:RunJob(name, fn, done)
+    jobs[#jobs + 1] = { name = name, co = coroutine.create(fn), done = done }
+    jobFrame:Show()
+end
+
+function AHF:JobRunning(name)
+    for _, j in ipairs(jobs) do if j.name == name then return true end end
+    return false
+end
+
+jobFrame:SetScript("OnUpdate", function(self)
+    local job = jobs[1]
+    if not job then self:Hide() return end
+    sliceStart = debugprofilestop()
+    local ok, err = coroutine.resume(job.co)
+    sliceStart = nil
+    if not ok then
+        table.remove(jobs, 1)
+        AHF:Print("|cffff6060something went wrong (" .. job.name .. "): " .. tostring(err) .. "|r")
+    elseif coroutine.status(job.co) == "dead" then
+        table.remove(jobs, 1)
+        if job.done then job.done() end
+    end
+    if not jobs[1] then self:Hide() end
+end)
+
+---------------------------------------------------------------------------
+-- Tidying old data: days older than two weeks become weeks (once a day)
+---------------------------------------------------------------------------
+function AHF:CondenseAll(force)
+    local today = P.Day(self.Now())
+    if not force and self.data.condensed == today then return end
+    self:RunJob("condense", function()
+        for _, realm in pairs(self.data.realms) do
+            local keys = {}
+            for key in pairs(realm.items) do keys[#keys + 1] = key end
+            for _, key in ipairs(keys) do
+                local v = realm.items[key]
+                local recs = type(v) == "string" and P.Decode(v) or v
+                if type(recs) == "table" then
+                    local out, changed = P.Condense(recs, today)
+                    if #out == 0 then
+                        realm.items[key] = nil
+                    elseif changed then
+                        realm.items[key] = type(v) == "string" and P.Encode(out) or out
+                    end
+                end
+                self:Pause()
+            end
+        end
+        self.data.condensed = today
+    end)
+end
+
+---------------------------------------------------------------------------
+-- Tooltips: AHF lines under an item
+---------------------------------------------------------------------------
+-- "AHF Vendor" (what a vendor pays) and "AHF Market (seen N)" (the market value,
+-- or the lowest price when that's all there is; N = how many were listed in the
+-- newest data), each for one item
+function AHF.VendorPrice(link)
+    local get = C_Item and C_Item.GetItemInfo or GetItemInfo
+    if not get or not link then return nil end
+    local sell = select(11, get(link))
+    return type(sell) == "number" and sell > 0 and sell or nil
+end
+
+function AHF:MarketPrice(itemKey, itemID)
+    local recs = self:Records(itemKey) or (itemID and self:Records(tostring(itemID)))
+    if not recs or #recs == 0 then return nil end
+    local last = recs[#recs]
+    return last.v > 0 and last.v or last.m, last
+end
+
+function AHF:TooltipLines(link)
+    local key, id = self.KeyFromLink(link)
+    if not key then return nil end
+    local lines = {}
+    local vendor = self.VendorPrice(link)
+    if vendor then lines[#lines + 1] = { "AHF Vendor", self.Money(vendor) } end
+    local market, last = self:MarketPrice(key, id)
+    if market then lines[#lines + 1] = { "AHF Market (seen " .. (last.q or 0) .. ")", self.Money(market) } end
+    return #lines > 0 and lines or nil
+end
+
+function AHF:AddToTooltip(tooltip)
+    if not self.db or not self.db.tooltip or not tooltip or not tooltip.GetItem then return end
+    local _, link = tooltip:GetItem()
+    local lines = self:TooltipLines(link)
+    if not lines then return end
+    for _, l in ipairs(lines) do
+        tooltip:AddDoubleLine(l[1], l[2], 0.91, 0.63, 0.25, 1, 1, 1)
+    end
+    tooltip:Show()
+end
+
+function AHF:HookTooltips()
+    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip)
+            AHF:AddToTooltip(tooltip)
+        end)
+    elseif GameTooltip and GameTooltip.HookScript then
+        GameTooltip:HookScript("OnTooltipSetItem", function(tooltip) AHF:AddToTooltip(tooltip) end)
+    end
+end
+
+---------------------------------------------------------------------------
+-- /ahf
+---------------------------------------------------------------------------
+function AHF:Slash(msg)
+    msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+    if msg == "scan" then
+        self:StartFullScan()
+    elseif msg == "tooltip" then
+        self.db.tooltip = not self.db.tooltip
+        self:Print("prices in tooltips " .. (self.db.tooltip and "on" or "off") .. ".")
+        if self.RefreshWindow then self:RefreshWindow() end
+    elseif msg == "help" then
+        self:Print("/ahf opens the window, /ahf scan starts a full scan (at the auction house), /ahf tooltip turns the tooltip prices on or off.")
+    else
+        if self.ToggleWindow then self:ToggleWindow() end
+    end
 end
 
 SLASH_AUCTIONHOUSEFOREVER1 = "/ahf"
-SLASH_AUCTIONHOUSEFOREVER2 = "/auctionhouseforever"
-SlashCmdList.AUCTIONHOUSEFOREVER = function(msg)
-    msg = (msg or ""):lower():match("^%s*(.-)%s*$")
-    if not AHF.db then Print("not ready yet.") return end
-    if msg == "" or msg == "config" or msg == "options" then
-        AHF:ToggleConfig()
-    elseif msg == "lock" or msg == "unlock" then
-        AHF:SetLocked(msg == "lock")
-        Print(msg == "lock" and "window locked." or "window unlocked: drag its title bar to move it.")
-    elseif msg == "reset" then
-        AHF:ResetWindow()
-        Print("window size, position and scale reset.")
-    elseif msg == "columns" then
-        AHF:ResetColumns()
-        Print("columns reset: all shown, default order and widths.")
-    elseif msg == "debug" then
-        Print("version " .. tostring(AHF:Version()) .. "; " .. (AHF.TabDebug and AHF:TabDebug() or "no tab code"))
-        if AHF.ShowReport then AHF:ShowReport() end
-    elseif msg == "news" then
-        AHF:ToggleSplash()
-    else
-        Help()
-    end
-end
+SlashCmdList.AUCTIONHOUSEFOREVER = function(msg) AHF:Slash(msg) end
 
 ---------------------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------------------
 local events = CreateFrame("Frame")
+AHF.eventFrame = events
 events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_LOGOUT")
-events:SetScript("OnEvent", function(_, event, arg1)
-    if event == "ADDON_LOADED" then
-        if arg1 == ADDON then
-            if type(AuctionHouseForeverDB) ~= "table" then AuctionHouseForeverDB = {} end
-            if type(AuctionHouseForeverCharDB) ~= "table" then AuctionHouseForeverCharDB = {} end
-            AHF.db = PrepareSettings(AuctionHouseForeverDB)
-            AHF.charDB = PrepareCharSettings(AuctionHouseForeverCharDB)
-            -- Another addon (Auctionator) may have loaded the Auction House first
-            if AuctionHouseLoaded() then AHF:OnAuctionHouseLoaded() end
-        elseif arg1 == AHF.AH_ADDON then
-            AHF:OnAuctionHouseLoaded()
-        end
+AHF.handlers = {}
+
+function AHF:On(event, fn)
+    self.handlers[event] = self.handlers[event] or {}
+    table.insert(self.handlers[event], fn)
+    events:RegisterEvent(event)
+end
+
+events:SetScript("OnEvent", function(_, event, ...)
+    if event == "ADDON_LOADED" and ... == ADDON then
+        AHF:LoadSaved()
     elseif event == "PLAYER_LOGIN" then
-        if AuctionHouseLoaded() then AHF:OnAuctionHouseLoaded() end
-        AHF:RememberCharacter()
-        AHF:RegisterSettingsCategory()
-        AHF:MaybeShowSplash()
+        AHF:HookTooltips()
+        AHF:CondenseAll()
     elseif event == "PLAYER_LOGOUT" then
-        AHF:RememberCharacter()
+        AHF:Pack()
     end
+    for _, fn in ipairs(AHF.handlers[event] or {}) do fn(...) end
 end)
