@@ -65,6 +65,8 @@ function Methods:HookScript(k, fn)
     local old = self.__scripts[k]
     self.__scripts[k] = function(...) if old then old(...) end fn(...) end
 end
+function Methods:SetTexture(t) self.__texture = t end
+function Methods:SetMaxLetters(n) self.__maxLetters = n end
 function Methods:SetText(t) self.__text = t == nil and "" or tostring(t) end
 function Methods:GetText() return self.__text end
 function Methods:SetFontString(fs) self.__fs = fs end

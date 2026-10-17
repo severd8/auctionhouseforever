@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.1
+
+- **Resale options look tidier.** The money boxes now look like the game's own: a box, then its gold, silver or copper coin. The silver and copper boxes are wide enough for two digits (typing 30 silver showed only "3"), and numbers sit on the right like money does.
+
 ## 2.4.0
 
 - **Price sharing.** Players with AuctionHouse Forever now share their full scans with each other, so you get fresh prices without scanning yourself. It all happens on a hidden channel that never shows in your chat.

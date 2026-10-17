@@ -304,6 +304,9 @@ do
     local o = AHF.resaleOptions
     eq(o.minProfit[1]:GetText(), "0", "min profit gold"); eq(o.minProfit[2]:GetText(), "1", "silver"); eq(o.minProfit[3]:GetText(), "0", "copper")
     eq(o.maxPrice[1]:GetText(), "", "no max price: blank")
+    has(o.minProfit[1].coin.__texture, "GoldIcon", "gold coin"); has(o.minProfit[3].coin.__texture, "CopperIcon", "copper coin")
+    eq(o.minProfit[2].__maxLetters, 2, "silver: two digits"); assert(o.minProfit[2]:GetWidth() >= 30, "room for two digits")
+    assert(o.right <= 780, "the strip fits the auction house: " .. o.right)
     eq(o.minPct:GetText(), "10"); eq(o.minSeen:GetText(), "1"); eq(o.seenDays:GetText(), "7")
     local function Type(box, text) box:SetFocus(); box:SetText(text); box:ClearFocus() end
     Type(o.minProfit[2], "9")                       -- 9 silver: only the 1612 one

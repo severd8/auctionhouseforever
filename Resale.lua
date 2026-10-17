@@ -208,11 +208,13 @@ local function Label(parent, text, x)
 end
 
 -- A number box. get() and set(v) read and store the setting (set gets nil for a blank box)
-local function NumberBox(parent, x, width, get, set, tip)
+local function NumberBox(parent, x, width, get, set, tip, maxLetters)
     local eb = T.EditBox(parent, width)
     eb:SetPoint("TOPLEFT", x, OPTION_Y)
+    eb:SetTextInsets(4, 5, 0, 0)
+    eb:SetJustifyH("RIGHT")
     eb:SetNumeric(true)
-    eb:SetMaxLetters(7)
+    eb:SetMaxLetters(maxLetters or 7)
     local function Show() local v = get(); eb:SetText(v and tostring(v) or "") end
     local function Commit()
         set(tonumber(eb:GetText()))
@@ -231,11 +233,18 @@ local function Clamp(key, v)
     return math.max(r[1], math.min(r[2], math.floor(v)))
 end
 
--- Gold, silver and copper boxes for a copper setting
+-- Gold, silver and copper boxes for a copper setting, each followed by its
+-- coin, like the game's own money boxes
+local COINS = {
+    { "Interface\\MoneyFrame\\UI-GoldIcon", 10000, 40, 6 },
+    { "Interface\\MoneyFrame\\UI-SilverIcon", 100, 30, 2 },
+    { "Interface\\MoneyFrame\\UI-CopperIcon", 1, 30, 2 },
+}
+AHF.RESALE_COINS = COINS
+
 local function MoneyBoxes(parent, x, key, blankIsZero, tip)
     local boxes = {}
-    local parts = { { "g", 10000, 44 }, { "s", 100, 26 }, { "c", 1, 26 } }
-    for _, p in ipairs(parts) do
+    for _, p in ipairs(COINS) do
         local unit, size = p[2], p[3]
         local eb
         eb, x = NumberBox(parent, x, size,
@@ -250,10 +259,13 @@ local function MoneyBoxes(parent, x, key, blankIsZero, tip)
                 local old = unit == 10000 and math.floor(v / 10000) or math.floor(v / unit) % 100
                 AHF.db[key] = Clamp(key, v + ((n or 0) - old) * unit)
                 for _, b in ipairs(boxes) do b.Show_() end
-            end, tip)
-        local fs = Text(parent, p[1], "GameFontNormalSmall", C.gold)
-        fs:SetPoint("TOPLEFT", x - 1, OPTION_Y - 5)
-        x = x + 12
+            end, tip, p[4])
+        local coin = parent:CreateTexture(nil, "ARTWORK")
+        coin:SetTexture(p[1])
+        coin:SetSize(13, 13)
+        coin:SetPoint("TOPLEFT", x - 2, OPTION_Y - 5)
+        eb.coin = coin
+        x = x + 15
         boxes[#boxes + 1] = eb
     end
     return boxes, x
@@ -266,25 +278,26 @@ BuildOptions = function(panel)
     _, x = Label(panel, "Min profit", x)
     o.minProfit, x = MoneyBoxes(panel, x, "resaleMinProfit", false,
         { "Minimum profit", "Only list deals that make at least this much after the auction house's 5% cut." })
-    _, x = Label(panel, "Min %", x + 10)
-    o.minPct, x = NumberBox(panel, x, 40,
+    _, x = Label(panel, "Min %", x + 6)
+    o.minPct, x = NumberBox(panel, x, 44,
         function() return AHF.db.resaleMinPct end,
         function(n) AHF.db.resaleMinPct = Clamp("resaleMinPct", n or 0) end,
         { "Minimum percent", "Only list deals whose profit is at least this percent of what you pay." })
-    _, x = Label(panel, "Seen", x + 10)
-    o.minSeen, x = NumberBox(panel, x, 30,
+    _, x = Label(panel, "Seen", x + 6)
+    o.minSeen, x = NumberBox(panel, x, 36,
         function() return AHF.db.resaleMinSeen end,
         function(n) AHF.db.resaleMinSeen = Clamp("resaleMinSeen", n or 1) end,
         { "Seen at least", "Only list items AHF has seen in at least this many scans in the days set next, so a price seen once can't fool it." })
     _, x = Label(panel, "times in", x)
-    o.seenDays, x = NumberBox(panel, x, 30,
+    o.seenDays, x = NumberBox(panel, x, 36,
         function() return AHF.db.resaleSeenDays end,
         function(n) AHF.db.resaleSeenDays = Clamp("resaleSeenDays", n or 7) end,
         { "Days", "How many days back the scans count for Seen." })
     _, x = Label(panel, "days", x)
-    _, x = Label(panel, "Max price", x + 10)
+    _, x = Label(panel, "Max price", x + 6)
     o.maxPrice, x = MoneyBoxes(panel, x, "resaleMaxPrice", true,
         { "Maximum price", "Only list listings that cost at most this much. Leave it blank for no limit." })
+    o.right = x
     panel.options = o
     AHF.resaleOptions = o
 end
